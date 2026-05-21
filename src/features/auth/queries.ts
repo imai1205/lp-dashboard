@@ -1,14 +1,14 @@
-import type { SessionContext } from "./types";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 
-// TODO: cookieからセッションを復元し、users + organization_members を join して返す。
-// Server Component / Server Action 双方から呼ばれる想定。
-export async function getSession(): Promise<SessionContext | null> {
-  throw new Error("getSession: not implemented");
+// Server Component / Server Action から呼ぶ。Cookie を見てセッション復元。
+export async function getSession() {
+  return auth.api.getSession({ headers: headers() });
 }
 
-// 未ログインなら redirect する糖衣。
-export async function requireSession(): Promise<SessionContext> {
-  const s = await getSession();
-  if (!s) throw new Error("Unauthorized");
-  return s;
+// 未ログインなら null ではなく throw する糖衣。
+export async function requireSession() {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+  return session;
 }

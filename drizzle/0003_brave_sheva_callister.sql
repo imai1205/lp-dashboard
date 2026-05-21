@@ -1,0 +1,1 @@
+ALTER TABLE `event_definitions` ADD `type` text DEFAULT 'conversion' NOT NULL;

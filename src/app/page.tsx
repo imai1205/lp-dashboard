@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
+import { getSession } from "@/features/auth/queries";
 import { KpiCard, getDashboardSummary } from "@/features/dashboard";
 import {
   ActionResultsTable,
@@ -8,26 +10,28 @@ import {
   getSourceRanking,
 } from "@/features/analytics";
 import { InquiryTable, listInquiries } from "@/features/inquiries";
-import { getFirstSite } from "@/features/sites";
+import { getMyFirstSite } from "@/features/sites";
 
-// 認証導入前なので Turso への書込みを即時反映するために dynamic にしておく
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const site = await getFirstSite();
+  const session = await getSession();
+  // middleware で /login へ送られているはずだが念のため
+  if (!session) redirect("/login");
+
+  const site = await getMyFirstSite(session.user.id);
 
   if (!site) {
     return (
       <div className="min-h-screen flex bg-slate-50">
-        <Sidebar />
+        <Sidebar user={session.user} />
         <div className="flex-1 flex flex-col min-w-0">
-          <Topbar title="ダッシュボード" subtitle="サイト未登録" />
+          <Topbar />
           <main className="flex-1 p-6">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center">
-              <p className="text-slate-600">サイトが登録されていません。</p>
+              <p className="text-slate-600">参照できるサイトがありません。</p>
               <p className="mt-2 text-sm text-slate-500">
-                <code className="font-mono bg-slate-100 px-2 py-0.5 rounded">npm run db:seed</code>{" "}
-                を実行してください。
+                組織への所属がない可能性があります。管理者にお問い合わせください。
               </p>
             </div>
           </main>
@@ -36,7 +40,6 @@ export default async function Page() {
     );
   }
 
-  // 並列フェッチ
   const [summary, sources, actions, inquiries] = await Promise.all([
     getDashboardSummary(site.id),
     getSourceRanking(site.id),
@@ -46,7 +49,7 @@ export default async function Page() {
 
   return (
     <div className="min-h-screen flex bg-slate-50">
-      <Sidebar />
+      <Sidebar user={session.user} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />
         <main className="flex-1 p-6 space-y-6 overflow-x-hidden">
@@ -92,7 +95,7 @@ export default async function Page() {
             <ActionResultsTable data={actions} />
           </section>
 
-          {/* 問い合わせ一覧 */}
+          {/* 問い合わせ */}
           <section>
             <InquiryTable data={inquiries} />
           </section>

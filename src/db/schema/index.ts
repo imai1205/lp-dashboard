@@ -3,6 +3,9 @@
 
 export * from "./organizations";
 export * from "./users";
+export * from "./accounts";
+export * from "./sessions";
+export * from "./verifications";
 export * from "./organization-members";
 export * from "./sites";
 export * from "./event-definitions";

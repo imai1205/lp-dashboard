@@ -1,19 +1,115 @@
 "use server";
 
+import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createId } from "@paralleldrive/cuid2";
 import { db } from "@/db/client";
-import type { CreateSiteInput, UpdateSiteInput } from "./types";
+import { organizationMembers, sites } from "@/db/schema";
+import { requireSession } from "@/features/auth/queries";
 
-export async function createSite(_input: CreateSiteInput): Promise<void> {
-  void db;
-  throw new Error("createSite: not implemented");
+// --- ヘルパ: 自分が組織のメンバーか確認 ----------------------------------
+async function assertMembership(userId: string, organizationId: string) {
+  const [m] = await db
+    .select()
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.userId, userId),
+        eq(organizationMembers.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  if (!m) throw new Error("この組織のメンバーではありません");
 }
 
-export async function updateSite(_input: UpdateSiteInput): Promise<void> {
-  void db;
-  throw new Error("updateSite: not implemented");
+// --- ヘルパ: site の組織が自分の所属組織かを確認 -------------------------
+// 戻り値は site 自体 (続けて使えるように)
+async function assertSiteOwnership(userId: string, siteId: string) {
+  const [row] = await db
+    .select({ site: sites })
+    .from(sites)
+    .innerJoin(
+      organizationMembers,
+      eq(organizationMembers.organizationId, sites.organizationId),
+    )
+    .where(and(eq(sites.id, siteId), eq(organizationMembers.userId, userId)))
+    .limit(1);
+  if (!row) throw new Error("対象のサイトへの権限がありません");
+  return row.site;
 }
 
-export async function deleteSite(_id: string): Promise<void> {
-  void db;
-  throw new Error("deleteSite: not implemented");
+// --- create ---------------------------------------------------------------
+export async function createSite(formData: FormData): Promise<void> {
+  const session = await requireSession();
+
+  const organizationId = formData.get("organizationId");
+  const name = formData.get("name");
+  const domain = formData.get("domain");
+
+  if (typeof organizationId !== "string" || !organizationId) {
+    throw new Error("組織を選択してください");
+  }
+  if (typeof name !== "string" || !name.trim()) {
+    throw new Error("LP名を入力してください");
+  }
+
+  await assertMembership(session.user.id, organizationId);
+
+  await db.insert(sites).values({
+    organizationId,
+    name: name.trim(),
+    domain: typeof domain === "string" && domain.trim() ? domain.trim() : null,
+    trackingId: `trk_${createId()}`,
+  });
+
+  revalidatePath("/sites");
+  revalidatePath("/dashboard");
+}
+
+// --- update ---------------------------------------------------------------
+export async function updateSite(formData: FormData): Promise<void> {
+  const session = await requireSession();
+
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) throw new Error("id is required");
+
+  await assertSiteOwnership(session.user.id, id);
+
+  const name = formData.get("name");
+  const domain = formData.get("domain");
+  const isActive = formData.get("isActive"); // checkbox: "on" or null
+
+  if (typeof name !== "string" || !name.trim()) {
+    throw new Error("LP名を入力してください");
+  }
+
+  await db
+    .update(sites)
+    .set({
+      name: name.trim(),
+      domain: typeof domain === "string" && domain.trim() ? domain.trim() : null,
+      isActive: isActive === "on",
+    })
+    .where(eq(sites.id, id));
+
+  revalidatePath("/sites");
+  revalidatePath(`/sites/${id}/edit`);
+  revalidatePath("/dashboard");
+}
+
+// --- delete ---------------------------------------------------------------
+export async function deleteSite(formData: FormData): Promise<void> {
+  const session = await requireSession();
+
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) throw new Error("id is required");
+
+  await assertSiteOwnership(session.user.id, id);
+
+  await db.delete(sites).where(eq(sites.id, id));
+
+  revalidatePath("/sites");
+  revalidatePath("/dashboard");
+  redirect("/sites");
 }

@@ -1,11 +1,34 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
+  analyticsDaily,
   analyticsSourcesDaily,
   eventDefinitions,
   events,
 } from "@/db/schema";
 import type { ActionResult, ReferrerRank } from "./types";
+
+// 日別推移グラフ用のデータポイント
+export type DailyTrendPoint = {
+  date: string; // "YYYY-MM-DD"
+  impressions: number;
+  visitors: number;
+  conversions: number;
+};
+
+// analytics_daily を日付昇順で返す。recharts に直接渡せる形。
+export async function getDailyTrend(siteId: string): Promise<DailyTrendPoint[]> {
+  return db
+    .select({
+      date: analyticsDaily.date,
+      impressions: analyticsDaily.impressions,
+      visitors: analyticsDaily.visitors,
+      conversions: analyticsDaily.conversions,
+    })
+    .from(analyticsDaily)
+    .where(eq(analyticsDaily.siteId, siteId))
+    .orderBy(asc(analyticsDaily.date));
+}
 
 // 流入元ランキング: analytics_sources_daily を source で group by して合計
 export async function getSourceRanking(siteId: string): Promise<ReferrerRank[]> {

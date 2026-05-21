@@ -15,6 +15,10 @@ export const eventDefinitions = sqliteTable(
       .references(() => sites.id, { onDelete: "cascade" }),
     key: text("key").notNull(),
     label: text("label").notNull(),
+    // この定義に紐づくイベントの種別。tracker で記録される events.type の既定値となる。
+    type: text("type", { enum: ["pageview", "visit", "conversion"] })
+      .notNull()
+      .default("conversion"),
     isConversion: integer("is_conversion", { mode: "boolean" })
       .notNull()
       .default(true),

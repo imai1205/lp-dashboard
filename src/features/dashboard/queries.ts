@@ -1,11 +1,13 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { analyticsDaily } from "@/db/schema";
+import { analyticsDaily, eventDefinitions, events } from "@/db/schema";
 import type { Summary } from "./types";
 
 type Totals = { impressions: number; visitors: number; conversions: number };
 
-function sumOf(rows: { impressions: number; visitors: number; conversions: number }[]): Totals {
+function sumOf(
+  rows: { impressions: number; visitors: number; conversions: number }[],
+): Totals {
   return rows.reduce<Totals>(
     (acc, r) => ({
       impressions: acc.impressions + r.impressions,
@@ -22,18 +24,49 @@ function relDelta(prev: number, curr: number): number {
 }
 
 export async function getDashboardSummary(siteId: string): Promise<Summary> {
-  const rows = await db
-    .select()
+  // 1. impressions / visitors は引き続き analytics_daily から取得
+  const dailyRows = await db
+    .select({
+      date: analyticsDaily.date,
+      impressions: analyticsDaily.impressions,
+      visitors: analyticsDaily.visitors,
+    })
     .from(analyticsDaily)
     .where(eq(analyticsDaily.siteId, siteId))
     .orderBy(asc(analyticsDaily.date));
 
+  // 2. 成果数は events × event_definitions(is_conversion=true) を日付別に COUNT
+  // INNER JOIN なので event_definition_id が NULL の events は除外される
+  const conversionsByDate = await db
+    .select({
+      date: sql<string>`strftime('%Y-%m-%d', datetime(${events.occurredAt}, 'unixepoch'))`.as(
+        "date",
+      ),
+      count: sql<number>`count(*)`.as("count"),
+    })
+    .from(events)
+    .innerJoin(eventDefinitions, eq(events.eventDefinitionId, eventDefinitions.id))
+    .where(
+      and(eq(events.siteId, siteId), eq(eventDefinitions.isConversion, true)),
+    )
+    .groupBy(sql`date`);
+
+  const convByDate = new Map<string, number>();
+  for (const r of conversionsByDate) {
+    convByDate.set(r.date, Number(r.count));
+  }
+
+  // 3. analytics_daily の日付に events ベース成果数を当てはめる
+  const rows = dailyRows.map((r) => ({
+    impressions: r.impressions,
+    visitors: r.visitors,
+    conversions: convByDate.get(r.date) ?? 0,
+  }));
+
   const totals = sumOf(rows);
   const cvr = totals.visitors === 0 ? 0 : (totals.conversions / totals.visitors) * 100;
 
-  // 「前月比」表示のための暫定実装: 同期間の前後半を比較する。
-  // 7日 → 前半3日 vs 後半3日 (真ん中1日は捨てる)。
-  // 真の前月データが揃ったら period-over-period クエリに置換予定。
+  // 前後半比較 (前月比の暫定: 真の前月集計に置換予定)
   const half = Math.floor(rows.length / 2);
   const previous = sumOf(rows.slice(0, half));
   const current = sumOf(rows.slice(-half));

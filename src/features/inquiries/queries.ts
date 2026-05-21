@@ -1,15 +1,14 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { inquiries as inquiriesTable } from "@/db/schema";
-import type { Inquiry } from "./types";
+import {
+  inquiries as inquiriesTable,
+  organizationMembers,
+  sites,
+} from "@/db/schema";
+import type { Inquiry, InquiryAdminRow } from "./types";
+import { STATUS_LABEL } from "./types";
 
-// DB の english status → UI 表示用日本語ラベル
-const STATUS_LABEL = {
-  open: "未対応",
-  in_progress: "対応中",
-  resolved: "完了",
-} as const satisfies Record<"open" | "in_progress" | "resolved", Inquiry["status"]>;
-
+// --- ダッシュボード用 (Japanese status の view model) -------------------
 export async function listInquiries(
   siteId: string,
   options?: { limit?: number },
@@ -47,4 +46,43 @@ export async function getInquiry(id: string): Promise<Inquiry | null> {
     message: r.message,
     status: STATUS_LABEL[r.status],
   };
+}
+
+// --- 管理画面用: 所属組織経由でアクセスできる問い合わせ -----------------
+// 1クエリで sites + organization_members を JOIN して権限フィルタする。
+// siteId を渡せばさらにそのサイトに絞り込み。
+export async function listMyInquiries(
+  userId: string,
+  options?: { siteId?: string; limit?: number },
+): Promise<InquiryAdminRow[]> {
+  const conditions = [eq(organizationMembers.userId, userId)];
+  if (options?.siteId) conditions.push(eq(inquiriesTable.siteId, options.siteId));
+
+  const rows = await db
+    .select({
+      inquiry: inquiriesTable,
+      siteName: sites.name,
+    })
+    .from(inquiriesTable)
+    .innerJoin(sites, eq(sites.id, inquiriesTable.siteId))
+    .innerJoin(
+      organizationMembers,
+      eq(organizationMembers.organizationId, sites.organizationId),
+    )
+    .where(and(...conditions))
+    .orderBy(desc(inquiriesTable.receivedAt))
+    .limit(options?.limit ?? 200);
+
+  return rows.map(({ inquiry: r, siteName }) => ({
+    id: r.id,
+    siteId: r.siteId,
+    siteName,
+    name: r.name,
+    email: r.email,
+    phone: r.phone,
+    message: r.message,
+    status: r.status,
+    receivedAt: r.receivedAt.toISOString(),
+    createdAt: r.createdAt.toISOString(),
+  }));
 }
