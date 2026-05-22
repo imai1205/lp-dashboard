@@ -16,7 +16,7 @@ export default function CreateSiteForm({ organizations }: Props) {
       </div>
       <form
         action={createSite}
-        className="px-5 py-4 grid grid-cols-1 md:grid-cols-[1fr_1fr_2fr_auto] gap-3 items-end"
+        className="px-5 py-4 grid grid-cols-1 md:grid-cols-[1fr_1fr_1.5fr_1fr_auto] gap-3 items-end"
       >
         <div>
           <label className="block text-xs text-slate-500 mb-1">組織</label>
@@ -54,6 +54,16 @@ export default function CreateSiteForm({ organizations }: Props) {
             name="domain"
             placeholder="例: lp.example.com"
             className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">GA4プロパティID (任意)</label>
+          <input
+            type="text"
+            name="ga4PropertyId"
+            placeholder="例: 123456789"
+            inputMode="numeric"
+            className="w-full text-sm font-mono border border-slate-200 rounded-lg px-3 py-2 bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
           />
         </div>
         <button

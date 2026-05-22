@@ -14,6 +14,11 @@ import { eventDefinitions, events, sites } from "@/db/schema";
 //   2. event_definitions から (siteId, eventKey) で定義を引く (なければ null で続行)
 //   3. events に type="conversion" / occurredAt=now で INSERT
 
+// libsql (Turso) を呼ぶので Node ランタイム必須。Edge 不可。
+export const runtime = "nodejs";
+// 外部LPからのPOSTを毎回新規処理するためキャッシュ無効
+export const dynamic = "force-dynamic";
+
 // CORS: credentials を送らない前提なので "*" でOK。
 // クッキーが必要になる場合は Origin を allowlist に切り替えること。
 const CORS_HEADERS = {

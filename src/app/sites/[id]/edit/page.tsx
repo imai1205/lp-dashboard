@@ -8,6 +8,7 @@ import {
   DeleteSiteButton,
   EditSiteForm,
   EmbedCodeBlock,
+  SyncGA4Button,
   getMySiteWithOrg,
 } from "@/features/sites";
 
@@ -31,8 +32,10 @@ export default async function EditSitePage({ params }: Props) {
 
   // tracker.js / 埋め込みコードのオリジン。
   // 本番では NEXT_PUBLIC_APP_URL を本番ドメインに設定する。
+  // Vercel で env 未設定でもデプロイ即動くよう VERCEL_URL を中間フォールバックに。
   const origin =
     process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ??
     process.env.BETTER_AUTH_URL ??
     "http://localhost:3000";
 
@@ -62,6 +65,32 @@ export default async function EditSitePage({ params }: Props) {
 
           {/* 編集フォーム */}
           <EditSiteForm site={row.site} />
+
+          {/* GA4 連携 */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 className="font-semibold text-slate-900">GA4 連携</h2>
+              <p className="text-xs text-slate-500">
+                {row.site.ga4PropertyId ? (
+                  <>
+                    プロパティID:{" "}
+                    <code className="px-1 py-0.5 rounded bg-slate-100 font-mono">
+                      {row.site.ga4PropertyId}
+                    </code>
+                    {" "}— 直近30日の analytics_daily / analytics_sources_daily を取得します
+                  </>
+                ) : (
+                  "GA4プロパティID が未設定です。上のフォームで設定してください。"
+                )}
+              </p>
+            </div>
+            <div className="px-5 py-4">
+              <SyncGA4Button
+                siteId={row.site.id}
+                disabled={!row.site.ga4PropertyId}
+              />
+            </div>
+          </div>
 
           {/* 埋め込みコード (セットアップ + 各イベントのボタン例 + コピー機能) */}
           <EmbedCodeBlock

@@ -13,23 +13,43 @@ export const auth = betterAuth({
     usePlural: true,
   }),
 
-  // 詳細ログ (デバッグ用、production では消す)
-  logger: { level: "debug" },
+  // ログレベル: production では warn 以上のみに絞る (token等の機微情報がログに残るのを避ける)
+  logger: {
+    level: process.env.NODE_ENV === "production" ? "warn" : "debug",
+  },
   onAPIError: {
     onError: (error) => {
       console.error("[BetterAuth API error]", error);
     },
   },
 
-  // ベースURL / シークレット
-  baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+  // ベースURL: 優先順位
+  //   1) BETTER_AUTH_URL                       (本番カスタムドメイン指定時)
+  //   2) https://${VERCEL_URL}                 (Vercel自動付与)
+  //   3) http://localhost:3000                 (dev フォールバック)
+  baseURL:
+    process.env.BETTER_AUTH_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ??
+    "http://localhost:3000",
+  // 信頼するオリジン (CSRF判定用)。Vercel preview の動的URLにも対応するため
+  // 上記 baseURL に加えて VERCEL_URL も追加しておく。
+  trustedOrigins: [
+    process.env.BETTER_AUTH_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  ].filter((u): u is string => Boolean(u)),
   secret: process.env.BETTER_AUTH_SECRET,
 
   // Google OAuth
+  // GA4 Data API へアクセスするため analytics.readonly スコープを要求する。
+  // accessType: "offline" + prompt: "consent" で refresh_token を確実に取得し、
+  // accounts テーブルに保存させる (後続の token refresh に必要)。
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      scope: ["https://www.googleapis.com/auth/analytics.readonly"],
+      accessType: "offline",
+      prompt: "consent",
     },
   },
 

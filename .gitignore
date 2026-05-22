@@ -7,6 +7,10 @@ node_modules/
 .env.local
 .env*.local
 
+# GA4 Service Account 鍵 (絶対にコミットしない)
+service-account.json
+*service-account*.json
+
 # turso local
 local.db
 local.db-journal
@@ -16,3 +20,7 @@ local.db-journal
 # build artifacts
 next-env.d.ts
 .turbo
+
+*.json
+service-account.json
+.env.local

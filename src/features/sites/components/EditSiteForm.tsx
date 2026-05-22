@@ -34,6 +34,26 @@ export default function EditSiteForm({ site }: { site: Site }) {
           />
         </div>
 
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">
+            GA4プロパティID
+            <span className="ml-1 text-slate-400">
+              (空欄なら GA4 連携OFF)
+            </span>
+          </label>
+          <input
+            type="text"
+            name="ga4PropertyId"
+            defaultValue={site.ga4PropertyId ?? ""}
+            placeholder="例: 123456789"
+            inputMode="numeric"
+            className="w-full text-sm font-mono border border-slate-200 rounded-lg px-3 py-2 bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          />
+          <p className="mt-1 text-[11px] text-slate-500">
+            GA4 の「管理 → プロパティの詳細」で確認。9〜10桁の数字。
+          </p>
+        </div>
+
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
             type="checkbox"

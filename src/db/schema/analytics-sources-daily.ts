@@ -14,6 +14,7 @@ export const analyticsSourcesDaily = sqliteTable(
     date: text("date").notNull(),
     source: text("source").notNull(),
     visitors: integer("visitors").notNull().default(0),
+    sessions: integer("sessions").notNull().default(0),
     conversions: integer("conversions").notNull().default(0),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

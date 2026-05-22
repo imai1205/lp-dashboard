@@ -19,6 +19,8 @@ export const sites = sqliteTable(
     name: text("name").notNull(),
     domain: text("domain"),
     trackingId: text("tracking_id").notNull().unique(),
+    // GA4 プロパティID (string of digits)。null なら GA4 連携無効。
+    ga4PropertyId: text("ga4_property_id"),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
