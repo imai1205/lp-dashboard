@@ -11,7 +11,7 @@ const nav: NavItem[] = [
   { label: "成果ログ", icon: "🎯", href: "/activity" },
   { label: "問い合わせ", icon: "✉️", href: "/inquiries" },
   { label: "LP管理", icon: "🗂", href: "/sites" },
-  { label: "設定", icon: "⚙️" },
+  { label: "設定", icon: "⚙️", href: "/settings" },
 ];
 
 function isActive(pathname: string, href?: string) {

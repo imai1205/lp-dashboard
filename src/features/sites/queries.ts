@@ -1,6 +1,11 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { organizationMembers, organizations, sites } from "@/db/schema";
+import {
+  analyticsDaily,
+  organizationMembers,
+  organizations,
+  sites,
+} from "@/db/schema";
 import type { Site } from "./types";
 
 // SiteList で使う表示用の型 (Site + org名 + 自分のrole)
@@ -8,6 +13,14 @@ export type SiteWithOrg = {
   site: Site;
   organization: { id: string; name: string };
   role: "owner" | "admin" | "member";
+};
+
+// 設定画面で「最終同期日時」を出すための拡張
+export type SiteWithSyncStatus = SiteWithOrg & {
+  /** analytics_daily の updated_at の最大値。未同期なら null */
+  lastSyncedAt: Date | null;
+  /** analytics_daily の行数 (= 同期済みの日数の目安) */
+  syncedDays: number;
 };
 
 export async function listSites(organizationId: string): Promise<Site[]> {
@@ -72,6 +85,41 @@ export async function getMySiteWithOrg(
     .where(and(eq(organizationMembers.userId, userId), eq(sites.id, siteId)))
     .limit(1);
   return row ?? null;
+}
+
+// 設定画面用: getMySitesWithOrg の結果に「最終同期日時 / 同期済日数」を追加する。
+// 2クエリ構成 (site一覧 → analytics_daily 集計) で N+1 回避。
+export async function getMySitesWithSyncStatus(
+  userId: string,
+): Promise<SiteWithSyncStatus[]> {
+  const sitesWithOrg = await getMySitesWithOrg(userId);
+  if (sitesWithOrg.length === 0) return [];
+
+  const siteIds = sitesWithOrg.map((s) => s.site.id);
+
+  // analytics_daily に行があるサイト分だけ集計が返る
+  const syncRows = await db
+    .select({
+      siteId: analyticsDaily.siteId,
+      // SQLite で integer mode:"timestamp" = unix秒。max() を取って秒で扱う。
+      maxUpdatedUnix: sql<number | null>`max(unixepoch(${analyticsDaily.updatedAt}))`,
+      daysCount: sql<number>`count(*)`,
+    })
+    .from(analyticsDaily)
+    .where(inArray(analyticsDaily.siteId, siteIds))
+    .groupBy(analyticsDaily.siteId);
+
+  const map = new Map(syncRows.map((r) => [r.siteId, r]));
+
+  return sitesWithOrg.map((s) => {
+    const row = map.get(s.site.id);
+    return {
+      ...s,
+      lastSyncedAt:
+        row?.maxUpdatedUnix != null ? new Date(row.maxUpdatedUnix * 1000) : null,
+      syncedDays: Number(row?.daysCount ?? 0),
+    };
+  });
 }
 
 // ユーザーが所属する全組織の全サイトを、組織情報・自分のロール付きで取得。
