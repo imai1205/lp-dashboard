@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/lib/utils";
 import type { Inquiry } from "../types";
 
 const statusStyles: Record<Inquiry["status"], string> = {
@@ -5,15 +6,6 @@ const statusStyles: Record<Inquiry["status"], string> = {
   対応中: "bg-amber-50 text-amber-700 border-amber-200",
   完了: "bg-slate-100 text-slate-600 border-slate-200",
 };
-
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${mm}/${dd} ${hh}:${mi}`;
-}
 
 export default function InquiryTable({ data }: { data: Inquiry[] }) {
   return (
@@ -40,7 +32,7 @@ export default function InquiryTable({ data }: { data: Inquiry[] }) {
             {data.map((row) => (
               <tr key={row.id} className="hover:bg-slate-50/60 transition">
                 <td className="px-5 py-3 text-slate-600 whitespace-nowrap">
-                  {formatDate(row.receivedAt)}
+                  {formatDateTime(row.receivedAt)}
                 </td>
                 <td className="px-5 py-3 text-slate-900 whitespace-nowrap">{row.name}</td>
                 <td className="px-5 py-3 text-slate-600 whitespace-nowrap">{row.email}</td>
