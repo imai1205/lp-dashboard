@@ -22,8 +22,11 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// API ルート / 静的ファイル / 画像 / tracker.js は除外。
-// tracker.js は外部LPの匿名訪問者から読み込まれるので未ログインでも到達可能にする必要がある。
+// API ルート / 静的ファイル / 画像 / tracker.js / docs は除外。
+// - tracker.js: 外部LPの匿名訪問者から読み込まれるので公開必須
+// - docs/*    : 導入ガイドなので未ログインの開発者でも見られるよう公開
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|tracker\\.js).*)"],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|tracker\\.js|docs).*)",
+  ],
 };

@@ -1,69 +1,116 @@
 /**
  * LP Analytics tracker
  * ----------------------------------------------------------------
- * 外部LPに <script src="https://<your-saas>/tracker.js" async></script>
- * の形で読み込み、 window.trackEvent({ siteId, eventKey }) で計測を送る。
+ * 外部LPに以下1行を貼るだけで導入:
  *
- * 使用例:
- *   <script src="https://your-saas.com/tracker.js" async></script>
- *   <button onclick="trackEvent({ siteId: 'xxx', eventKey: 'lp_line_click' })">
- *     LINEで相談する
- *   </button>
+ *   <script src="https://lp-dashboard-eight.vercel.app/tracker.js"
+ *           data-site-id="xxx"></script>
+ *
+ * ボタン等から:
+ *
+ *   <button onclick="trackEvent('lp_line_click')">LINEで相談</button>
+ *
+ * 詳細:
+ *   - data-site-id 属性で siteId のデフォルトを設定
+ *   - trackEvent("eventKey") のショートハンドで siteId を省略可
+ *   - 個別に上書きしたい場合: trackEvent({ siteId, eventKey, metadata })
+ *   - window.LP_TRACKING_SITE_ID にも互換対応
  */
 (function () {
   "use strict";
-
   if (typeof window === "undefined") return;
 
-  // 自分自身の<script>タグから API のオリジンを推測する。
-  // → LP側はURLを意識しなくてよい。
-  var apiOrigin = "";
+  // 1. 自分自身の <script> タグを特定
+  var thisScript = null;
   var scripts = document.getElementsByTagName("script");
   for (var i = scripts.length - 1; i >= 0; i--) {
-    var src = scripts[i].src;
-    if (src && /\/tracker\.js(\?|$)/.test(src)) {
-      try {
-        apiOrigin = new URL(src, location.href).origin;
-      } catch (_) {}
+    var s = scripts[i];
+    if (s.src && /\/tracker\.js(\?|$)/.test(s.src)) {
+      thisScript = s;
       break;
     }
   }
+
+  var apiOrigin = "";
+  var defaultSiteId = "";
+
+  if (thisScript) {
+    // 2. src 属性から APIオリジンを推測 (LP側はURLを意識しなくてよい)
+    try {
+      apiOrigin = new URL(thisScript.src, location.href).origin;
+    } catch (_) {}
+
+    // 3. data-site-id 属性から siteId デフォルトを取得
+    var dataSiteId = thisScript.getAttribute("data-site-id");
+    if (typeof dataSiteId === "string" && dataSiteId) {
+      defaultSiteId = dataSiteId;
+      // window.LP_TRACKING_SITE_ID 経由でも参照できるよう同期
+      if (!window.LP_TRACKING_SITE_ID) {
+        window.LP_TRACKING_SITE_ID = dataSiteId;
+      }
+    }
+  }
+
   if (!apiOrigin) {
     console.warn("[trackEvent] tracker.js のオリジンが検出できませんでした");
     return;
   }
 
   /**
-   * 計測イベントを送る。
-   * siteId は input で渡すか、 window.LP_TRACKING_SITE_ID で設定する。
-   * @param {{ siteId?: string, eventKey: string, metadata?: object }} input
+   * 計測イベントを送信。
+   *
+   * 使い方 (3パターン、いずれも動作):
+   *   trackEvent("lp_line_click")
+   *   trackEvent({ eventKey: "lp_line_click" })
+   *   trackEvent({ siteId: "xxx", eventKey: "lp_line_click", metadata: {...} })
+   *
+   * @param {string | { siteId?: string, eventKey: string, metadata?: object }} input
    */
   window.trackEvent = function (input) {
-    input = input || {};
+    var siteId = "";
+    var eventKey = "";
+    var metadata;
 
-    // siteId が input に無ければ グローバル設定 (LP_TRACKING_SITE_ID) を採用
-    var siteId = typeof input.siteId === "string" && input.siteId
-      ? input.siteId
-      : (typeof window.LP_TRACKING_SITE_ID === "string"
+    if (typeof input === "string") {
+      // ショートハンド: trackEvent("eventKey")
+      eventKey = input;
+    } else if (input && typeof input === "object") {
+      eventKey = typeof input.eventKey === "string" ? input.eventKey : "";
+      if (typeof input.siteId === "string" && input.siteId) {
+        siteId = input.siteId;
+      }
+      if (input.metadata && typeof input.metadata === "object") {
+        metadata = input.metadata;
+      }
+    }
+
+    // input で siteId が指定されていなければ data-site-id / グローバル変数から拾う
+    if (!siteId) {
+      siteId =
+        defaultSiteId ||
+        (typeof window.LP_TRACKING_SITE_ID === "string"
           ? window.LP_TRACKING_SITE_ID
           : "");
+    }
 
-    if (!siteId || typeof input.eventKey !== "string" || !input.eventKey) {
+    if (!siteId) {
       console.warn(
-        "[trackEvent] siteId と eventKey は必須です (siteId は window.LP_TRACKING_SITE_ID でも可)",
-        input,
+        "[trackEvent] siteId が見つかりません。" +
+          " <script data-site-id='xxx'> または window.LP_TRACKING_SITE_ID を設定してください。",
       );
       return;
     }
-
-    var body = { siteId: siteId, eventKey: input.eventKey };
-    if (input.metadata && typeof input.metadata === "object") {
-      body.metadata = input.metadata;
+    if (!eventKey) {
+      console.warn("[trackEvent] eventKey が必須です", input);
+      return;
     }
 
+    var body = { siteId: siteId, eventKey: eventKey };
+    if (metadata) body.metadata = metadata;
+
     try {
-      // keepalive: クリック直後にページ遷移しても送信が完走する
-      // credentials: "omit": Cookie を送らない (公開計測なので不要)
+      // keepalive: クリック直後のページ遷移でも送信が完走
+      // credentials: "omit": 外部LPから Cookie を送らない (公開計測のため)
       fetch(apiOrigin + "/api/track", {
         method: "POST",
         mode: "cors",
