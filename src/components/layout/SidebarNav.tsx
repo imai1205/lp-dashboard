@@ -7,8 +7,8 @@ type NavItem = { label: string; icon: string; href?: string };
 
 const nav: NavItem[] = [
   { label: "ダッシュボード", icon: "📊", href: "/dashboard" },
-  { label: "アクセス解析", icon: "📈" },
-  { label: "成果ログ", icon: "🎯" },
+  { label: "アクセス解析", icon: "📈", href: "/analytics" },
+  { label: "成果ログ", icon: "🎯", href: "/activity" },
   { label: "問い合わせ", icon: "✉️", href: "/inquiries" },
   { label: "LP管理", icon: "🗂", href: "/sites" },
   { label: "設定", icon: "⚙️" },

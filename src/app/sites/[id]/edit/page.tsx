@@ -31,13 +31,12 @@ export default async function EditSitePage({ params }: Props) {
   );
 
   // tracker.js / 埋め込みコードのオリジン。
-  // 本番では NEXT_PUBLIC_APP_URL を本番ドメインに設定する。
-  // Vercel で env 未設定でもデプロイ即動くよう VERCEL_URL を中間フォールバックに。
+  // 優先: NEXT_PUBLIC_APP_URL > VERCEL_URL > BETTER_AUTH_URL > 本番URL固定
   const origin =
     process.env.NEXT_PUBLIC_APP_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ??
     process.env.BETTER_AUTH_URL ??
-    "http://localhost:3000";
+    "https://lp-dashboard-eight.vercel.app";
 
   return (
     <div className="min-h-screen flex bg-slate-50">

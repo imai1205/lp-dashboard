@@ -24,13 +24,13 @@ export const auth = betterAuth({
   },
 
   // ベースURL: 優先順位
-  //   1) BETTER_AUTH_URL                       (本番カスタムドメイン指定時)
-  //   2) https://${VERCEL_URL}                 (Vercel自動付与)
-  //   3) http://localhost:3000                 (dev フォールバック)
+  //   1) BETTER_AUTH_URL                       (明示指定)
+  //   2) https://${VERCEL_URL}                 (Vercel自動付与の preview URL)
+  //   3) https://lp-dashboard-eight.vercel.app (本番URL — 最終フォールバック)
   baseURL:
     process.env.BETTER_AUTH_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ??
-    "http://localhost:3000",
+    "https://lp-dashboard-eight.vercel.app",
   // 信頼するオリジン (CSRF判定用)。Vercel preview の動的URLにも対応するため
   // 上記 baseURL に加えて VERCEL_URL も追加しておく。
   trustedOrigins: [
