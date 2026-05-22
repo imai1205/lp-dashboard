@@ -40,7 +40,7 @@ export default async function InquiriesPage({ searchParams }: Props) {
               : "所属組織の全サイトの問い合わせ"
           }
         />
-        <main className="flex-1 p-6 space-y-6 overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-6 space-y-6">
           <SiteFilterChips
             sites={sites}
             selectedSiteId={selectedSiteId}

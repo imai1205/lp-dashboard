@@ -58,7 +58,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
           title="アクセス解析"
           subtitle={`${selected.organization.name} / ${selected.site.name}`}
         />
-        <main className="flex-1 p-6 space-y-6 overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-6 space-y-6">
           {/* サイト切替 (アクセス解析は単一サイト粒度なので「全サイト」オプションは出さない) */}
           <SiteFilterChips
             sites={sites}

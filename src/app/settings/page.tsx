@@ -62,7 +62,7 @@ export default async function SettingsPage() {
       <Sidebar user={session.user} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar title="設定" subtitle="アカウントとサイトの連携状況" />
-        <main className="flex-1 p-6 space-y-6 overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-6 space-y-6">
           {/* === アカウント === */}
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
             <div className="px-5 py-4 border-b border-slate-100">

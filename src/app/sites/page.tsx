@@ -28,7 +28,7 @@ export default async function SitesPage() {
           title="LP管理"
           subtitle="所属組織配下のサイトを作成・編集・削除できます"
         />
-        <main className="flex-1 p-6 space-y-6 overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-6 space-y-6">
           <CreateSiteForm organizations={organizations} />
           <SiteAdminTable data={sites} />
 

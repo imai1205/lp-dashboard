@@ -46,7 +46,7 @@ export default async function EditSitePage({ params }: Props) {
           title="LP編集"
           subtitle={`${row.organization.name} / ${row.site.name}`}
         />
-        <main className="flex-1 p-6 space-y-6 overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-6 space-y-6">
           <div className="flex items-center justify-between">
             <Link
               href="/sites"
