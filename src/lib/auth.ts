@@ -1,6 +1,5 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import * as schema from "@/db/schema";
 import { organizationMembers, organizations } from "@/db/schema";
@@ -54,37 +53,28 @@ export const auth = betterAuth({
   },
 
   // 新規ユーザー作成時の自動処理 (組織への所属付与)
+  //
+  // ⚠️ 既存組織への自動参加は絶対に行わない。
+  // 過去のテスト hook では "Demo Co." 等に相乗りさせていたが、それだと
+  // 顧客同士のデータ漏洩 + 権限濫用が発生する。必ず新規組織を作る。
   databaseHooks: {
     user: {
       create: {
         after: async (user) => {
-          // 既存の "Demo Co." に owner として参加させる。
-          // 存在しない場合は <ユーザー名>'s Organization を新規作成。
-          const [demo] = await db
-            .select()
-            .from(organizations)
-            .where(eq(organizations.name, "Demo Co."))
-            .limit(1);
+          // 専用ワークスペースを新規作成し、owner として登録する。
+          const localPart = user.email.split("@")[0] ?? user.email;
+          const orgName = `${user.name ?? localPart} のワークスペース`;
 
-          let orgId: string;
-          if (demo) {
-            orgId = demo.id;
-          } else {
-            const [created] = await db
-              .insert(organizations)
-              .values({ name: `${user.name ?? user.email}'s Organization` })
-              .returning();
-            orgId = created.id;
-          }
+          const [created] = await db
+            .insert(organizations)
+            .values({ name: orgName })
+            .returning();
 
-          await db
-            .insert(organizationMembers)
-            .values({
-              organizationId: orgId,
-              userId: user.id,
-              role: "owner",
-            })
-            .onConflictDoNothing();
+          await db.insert(organizationMembers).values({
+            organizationId: created.id,
+            userId: user.id,
+            role: "owner",
+          });
         },
       },
     },
