@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, like, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   inquiries as inquiriesTable,
@@ -53,10 +53,26 @@ export async function getInquiry(id: string): Promise<Inquiry | null> {
 // siteId を渡せばさらにそのサイトに絞り込み。
 export async function listMyInquiries(
   userId: string,
-  options?: { siteId?: string; limit?: number },
+  options?: { siteId?: string; limit?: number; q?: string },
 ): Promise<InquiryAdminRow[]> {
   const conditions = [eq(organizationMembers.userId, userId)];
   if (options?.siteId) conditions.push(eq(inquiriesTable.siteId, options.siteId));
+
+  // フリーテキスト検索: 名前 / メール / 内容 を OR で LIKE。
+  // SQLite の LIKE は ASCII では case-insensitive、日本語は完全一致比較なので
+  // 通常の利用で十分機能する。長すぎる入力は弾く。
+  const q = options?.q?.trim();
+  if (q && q.length > 0 && q.length <= 100) {
+    // % をユーザー入力に許可しないようエスケープ (SQLite では LIKE 中の % / _ がワイルドカード)
+    const safe = q.replace(/[%_\\]/g, (c) => `\\${c}`);
+    const pattern = `%${safe}%`;
+    const orExpr = or(
+      like(inquiriesTable.name, pattern),
+      like(inquiriesTable.email, pattern),
+      like(inquiriesTable.message, pattern),
+    );
+    if (orExpr) conditions.push(orExpr);
+  }
 
   const rows = await db
     .select({

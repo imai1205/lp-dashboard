@@ -47,19 +47,27 @@ export default async function EditSitePage({ params }: Props) {
           subtitle={`${row.organization.name} / ${row.site.name}`}
         />
         <main className="flex-1 p-4 md:p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <Link
               href="/sites"
               className="inline-block text-xs text-brand-600 hover:underline"
             >
               ← LP一覧に戻る
             </Link>
-            <Link
-              href={`/sites/${row.site.id}/events`}
-              className="inline-block text-sm border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition"
-            >
-              イベント定義を管理 →
-            </Link>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link
+                href={`/sites/${row.site.id}/install`}
+                className="inline-block text-sm bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg transition"
+              >
+                導入コードを発行 →
+              </Link>
+              <Link
+                href={`/sites/${row.site.id}/events`}
+                className="inline-block text-sm border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition"
+              >
+                イベント定義 →
+              </Link>
+            </div>
           </div>
 
           {/* 編集フォーム */}

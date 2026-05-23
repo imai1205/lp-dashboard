@@ -20,6 +20,12 @@
   "use strict";
   if (typeof window === "undefined") return;
 
+  // 0. 二重ロード防止 — 同じページに <script> が2つ含まれてしまった場合でも
+  //    最初のロードだけ有効にし、後続は no-op。1度成功した window.trackEvent も
+  //    上書きされないので、data-site-id が上書きされる事故も防げる。
+  if (window.__LP_TRACKER_LOADED__) return;
+  window.__LP_TRACKER_LOADED__ = true;
+
   // 1. 自分自身の <script> タグを特定
   var thisScript = null;
   var scripts = document.getElementsByTagName("script");

@@ -54,17 +54,43 @@ export async function POST(request: NextRequest) {
     metadata?: unknown;
   };
 
-  if (typeof siteId !== "string" || !siteId) {
+  // バリデーション: 型 + 長さ上限 (DoS / DB肥大化対策)
+  const MAX_ID = 64;
+  const MAX_KEY = 100;
+  const MAX_METADATA_BYTES = 2000;
+
+  if (typeof siteId !== "string" || !siteId || siteId.length > MAX_ID) {
     return json({ ok: false, error: "siteId is required" }, { status: 400 });
   }
-  if (typeof eventKey !== "string" || !eventKey) {
+  if (typeof eventKey !== "string" || !eventKey || eventKey.length > MAX_KEY) {
     return json({ ok: false, error: "eventKey is required" }, { status: 400 });
   }
 
-  // サイト存在チェック (spoof対策)
+  // metadata は JSON object のみ許可、シリアライズ後 2KB 超は拒否
+  let safeMetadata: Record<string, unknown> | null = null;
+  if (isPlainObject(metadata)) {
+    try {
+      const serialized = JSON.stringify(metadata);
+      if (serialized.length > MAX_METADATA_BYTES) {
+        return json(
+          { ok: false, error: "metadata too large" },
+          { status: 413 },
+        );
+      }
+      safeMetadata = metadata;
+    } catch {
+      // 循環参照等
+      return json({ ok: false, error: "metadata not serializable" }, { status: 400 });
+    }
+  }
+
+  // サイト存在チェック (spoof対策) + アクティブ確認 (無効化サイトは弾く)
   const [site] = await db.select().from(sites).where(eq(sites.id, siteId)).limit(1);
   if (!site) {
     return json({ ok: false, error: "site not found" }, { status: 404 });
+  }
+  if (!site.isActive) {
+    return json({ ok: false, error: "site is inactive" }, { status: 403 });
   }
 
   // 対応する event_definition を引く。存在しなくても event は記録する。
@@ -80,7 +106,7 @@ export async function POST(request: NextRequest) {
     // 定義があればその type を使う。なければ既定で "conversion"
     type: def?.type ?? "conversion",
     occurredAt: new Date(),
-    metadata: isPlainObject(metadata) ? metadata : null,
+    metadata: safeMetadata,
     referrer: request.headers.get("referer"),
     userAgent: request.headers.get("user-agent"),
   });

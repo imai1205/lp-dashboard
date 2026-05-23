@@ -63,7 +63,13 @@ export default function SiteAdminTable({ data }: { data: SiteWithOrg[] }) {
                     {formatDateTime(site.createdAt)}
                   </td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
-                    <div className="inline-flex items-center gap-2">
+                    <div className="inline-flex items-center gap-2 flex-wrap justify-end">
+                      <Link
+                        href={`/sites/${site.id}/install`}
+                        className="inline-block text-xs px-2 py-1 rounded-md border border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100 transition"
+                      >
+                        導入コード
+                      </Link>
                       <Link
                         href={`/sites/${site.id}/events`}
                         className="inline-block text-xs px-2 py-1 rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50 transition"

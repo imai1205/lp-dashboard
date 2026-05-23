@@ -32,6 +32,104 @@ trackEvent({ siteId: "xxx", eventKey: "lp_line_click" });
 // パターンC: metadata付き (任意のJSONを events.metadata に保存)
 trackEvent({ eventKey: "lp_form_submit", metadata: { plan: "pro" } });`;
 
+// 問い合わせフォーム HTML サンプル (送信先 /api/inquiries)
+// データベース (inquiries テーブル) に保存され、ダッシュボードの /inquiries に表示される
+const INQUIRY_FORM_HTML = `<form id="contact-form">
+  <input name="name" placeholder="お名前" required />
+  <input name="email" type="email" placeholder="メール" required />
+  <input name="phone" placeholder="電話番号 (任意)" />
+  <textarea name="message" placeholder="お問い合わせ内容" required></textarea>
+  <button type="submit">送信</button>
+</form>
+
+<div id="contact-result" hidden></div>
+
+<script>
+  document.getElementById("contact-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var form = e.currentTarget;
+    var fd = new FormData(form);
+    var btn = form.querySelector("button[type=submit]");
+    var result = document.getElementById("contact-result");
+
+    btn.disabled = true;
+    result.hidden = true;
+
+    try {
+      var res = await fetch("${APP_URL}/api/inquiries", {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          siteId: window.LP_TRACKING_SITE_ID,  // tracker.js の data-site-id から自動取得
+          name: fd.get("name"),
+          email: fd.get("email"),
+          phone: fd.get("phone") || undefined,
+          message: fd.get("message"),
+        }),
+      });
+      var data = await res.json();
+
+      if (res.ok && data.ok) {
+        result.textContent = "送信ありがとうございました。担当より追ってご連絡します。";
+        result.style.color = "green";
+        form.reset();
+        // 注: /api/inquiries 側で lp_form_submit イベントもサーバ側で自動記録される
+      } else {
+        result.textContent = "送信失敗: " + (data.error || res.statusText);
+        result.style.color = "red";
+      }
+    } catch (err) {
+      result.textContent = "送信失敗: " + err.message;
+      result.style.color = "red";
+    } finally {
+      btn.disabled = false;
+      result.hidden = false;
+    }
+  });
+</script>`;
+
+// 丸ごとコピペできる完全な HTML サンプル (siteId だけ書き換えれば動く)
+const FULL_HTML_EXAMPLE = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>サンプルLP</title>
+
+  <!-- ① 計測タグ: site_id をご自身のサイトIDに書き換えてください -->
+  <script
+    src="${APP_URL}/tracker.js"
+    data-site-id="YOUR_SITE_ID"
+  ></script>
+</head>
+<body>
+  <h1>キャンペーンLP</h1>
+  <p>無料相談はこちらから↓</p>
+
+  <!-- ② LINE 相談ボタン -->
+  <a
+    href="https://line.me/R/ti/p/@your-account"
+    target="_blank"
+    rel="noopener"
+    onclick="trackEvent('lp_line_click')"
+  >LINEで無料相談する</a>
+
+  <!-- ③ 電話タップ -->
+  <a
+    href="tel:0120-000-000"
+    onclick="trackEvent('lp_tel_click')"
+  >📞 0120-000-000</a>
+
+  <!-- ④ フォーム送信 -->
+  <form onsubmit="trackEvent('lp_form_submit')">
+    <input name="name" placeholder="お名前" required />
+    <input name="email" type="email" placeholder="メール" required />
+    <button type="submit">送信</button>
+  </form>
+</body>
+</html>`;
+
 // 中央寄せの簡素なドキュメントレイアウト (Sidebar/Topbar 抜き)
 export default function InstallTrackerDocsPage() {
   return (
@@ -65,6 +163,38 @@ export default function InstallTrackerDocsPage() {
             <code className="bg-slate-100 px-1 py-0.5 rounded font-mono">trackEvent()</code>{" "}
             の呼び出しだけで計測を始められます。
           </p>
+        </section>
+
+        {/* 丸ごとコピペ用 HTML */}
+        <section className="bg-white rounded-2xl border-2 border-brand-200 shadow-sm">
+          <div className="px-5 py-4 border-b border-brand-100 bg-brand-50/40">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-brand-600 text-white">
+                QUICK START
+              </span>
+              <h2 className="font-semibold text-slate-900">
+                これを丸ごとコピペで動きます
+              </h2>
+            </div>
+            <p className="text-xs text-slate-600 mt-1">
+              <code className="bg-white px-1 rounded font-mono">YOUR_SITE_ID</code>{" "}
+              を{" "}
+              <Link href="/sites" className="text-brand-700 hover:underline font-medium">
+                LP管理
+              </Link>{" "}
+              で取得した siteId に置き換えるだけ。LINE / 電話 / フォーム の3パターンを含む完全な HTML です。
+            </p>
+          </div>
+          <div className="p-5">
+            <CodeBlock code={FULL_HTML_EXAMPLE} />
+            <p className="mt-3 text-xs text-slate-500">
+              ↑ をそのままLPに貼り、3ヶ所のボタンをクリックすると{" "}
+              <Link href="/activity" className="text-brand-600 hover:underline">
+                成果ログ
+              </Link>{" "}
+              に「lp_line_click / lp_tel_click / lp_form_submit」が3件流れることを確認できます。
+            </p>
+          </div>
         </section>
 
         {/* Step 1 */}
@@ -151,6 +281,51 @@ export default function InstallTrackerDocsPage() {
                 <KeyRow k="pageview" usage="ページ表示 (任意で onload 発火)" />
               </tbody>
             </table>
+          </div>
+        </section>
+
+        {/* 問い合わせフォーム送信 */}
+        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h2 className="font-semibold text-slate-900">
+              問い合わせフォームを DB に保存する
+            </h2>
+            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+              フォーム送信内容を{" "}
+              <code className="bg-slate-100 px-1 rounded font-mono">/api/inquiries</code>{" "}
+              に POST すると{" "}
+              <code className="bg-slate-100 px-1 rounded font-mono">inquiries</code>{" "}
+              テーブルへ保存され、管理画面の{" "}
+              <Link href="/inquiries" className="text-brand-600 hover:underline">
+                /inquiries
+              </Link>{" "}
+              で受信確認できます。送信成功時には{" "}
+              <code className="bg-slate-100 px-1 rounded font-mono">lp_form_submit</code>{" "}
+              イベントもサーバ側で自動で記録されます。
+            </p>
+          </div>
+          <div className="p-5 space-y-3">
+            <CodeBlock code={INQUIRY_FORM_HTML} />
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
+              <div>
+                <span className="font-semibold text-slate-700">必須フィールド:</span>{" "}
+                <code className="font-mono">siteId / name / email / message</code>
+              </div>
+              <div>
+                <span className="font-semibold text-slate-700">任意フィールド:</span>{" "}
+                <code className="font-mono">phone / company</code>
+              </div>
+              <div>
+                <span className="font-semibold text-slate-700">バリデーション:</span>{" "}
+                email形式チェック、文字数上限あり (name/email≤200 / phone≤50 / message≤5000)
+              </div>
+              <div>
+                <span className="font-semibold text-slate-700">レスポンス:</span>{" "}
+                成功時{" "}
+                <code className="font-mono">{`{ ok: true, id }`}</code> / 失敗時{" "}
+                <code className="font-mono">{`{ ok: false, error }`}</code>
+              </div>
+            </div>
           </div>
         </section>
 

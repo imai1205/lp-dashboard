@@ -1,12 +1,15 @@
 import { formatDateTime } from "@/lib/utils";
 import type { InquiryAdminRow } from "../types";
+import InquiryDetailButton from "./InquiryDetailButton";
 import InquiryStatusSelect from "./InquiryStatusSelect";
 
 type Props = {
   data: InquiryAdminRow[];
+  /** 検索クエリ。empty state の文言を出し分けるのに使う */
+  searchQuery?: string;
 };
 
-export default function InquiryAdminTable({ data }: Props) {
+export default function InquiryAdminTable({ data, searchQuery }: Props) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
       <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -19,8 +22,29 @@ export default function InquiryAdminTable({ data }: Props) {
       </div>
 
       {data.length === 0 ? (
-        <div className="px-5 py-10 text-center text-sm text-slate-500">
-          表示できる問い合わせがありません。
+        <div className="px-5 py-12 text-center space-y-3">
+          <div className="inline-flex w-12 h-12 rounded-full bg-slate-100 items-center justify-center text-slate-400 text-xl">
+            {searchQuery ? "🔍" : "📭"}
+          </div>
+          {searchQuery ? (
+            <>
+              <p className="text-sm text-slate-600">
+                「<span className="font-semibold">{searchQuery}</span>」に該当する問い合わせがありません。
+              </p>
+              <p className="text-xs text-slate-400">
+                別のキーワードで検索するか、サイト切替やクリアをお試しください。
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-600">
+                まだ問い合わせがありません。
+              </p>
+              <p className="text-xs text-slate-400">
+                LPに計測タグを設置すると、フォーム送信がここに表示されます。
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -35,6 +59,9 @@ export default function InquiryAdminTable({ data }: Props) {
                 <th className="px-5 py-2 font-medium">内容</th>
                 <th className="px-5 py-2 font-medium text-center whitespace-nowrap">
                   ステータス
+                </th>
+                <th className="px-5 py-2 font-medium text-right whitespace-nowrap">
+                  操作
                 </th>
               </tr>
             </thead>
@@ -76,6 +103,9 @@ export default function InquiryAdminTable({ data }: Props) {
                   </td>
                   <td className="px-5 py-3 text-center whitespace-nowrap">
                     <InquiryStatusSelect id={row.id} currentStatus={row.status} />
+                  </td>
+                  <td className="px-5 py-3 text-right whitespace-nowrap">
+                    <InquiryDetailButton row={row} />
                   </td>
                 </tr>
               ))}
