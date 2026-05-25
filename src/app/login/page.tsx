@@ -1,6 +1,17 @@
+import { redirect } from "next/navigation";
+import { getSession } from "@/features/auth/queries";
 import LoginButton from "./LoginButton";
 
-export default function LoginPage() {
+// /login は Cookie ベースでは未ログイン扱いだが、念のため DB セッションも検証して
+// 既に有効なセッションがあれば /dashboard へリダイレクト。
+// これにより「Cookieあり + DBセッション無効」のループを防ぎつつ、
+// 正規ログイン済みのユーザーは login画面を素通りして dashboard に着地する。
+export const dynamic = "force-dynamic";
+
+export default async function LoginPage() {
+  const session = await getSession();
+  if (session) redirect("/dashboard");
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-sm p-8">

@@ -2,22 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
 // Edge runtime ではDBクエリしないため、Cookie の有無だけで仮判定。
-// 真のセッション検証は Server Component / Server Action 側で行う。
+// 真のセッション検証は Server Component (getSession + redirect) 側で行う。
+//
+// 注意: Cookie が残っているが DB側で無効化済みのケース (DB wipe / 期限切れ等) を
+// 考慮する必要がある。middleware で「Cookieあり → /login から / へ」と redirect すると、
+// その / 側で getSession() が null を返して /login へ戻り、無限ループになる。
+// このため /login への redirect は行わず、Server Component の getSession() に任せる。
 export function middleware(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
   const { pathname } = request.nextUrl;
-
   const isLoginPage = pathname === "/login";
 
-  // 未ログインなら /login へ
+  // Cookie 無しで保護ページにアクセス → /login へ
   if (!sessionCookie && !isLoginPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // ログイン済みで /login に来たら / へ
-  if (sessionCookie && isLoginPage) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
+  // Cookie あり + /login のケースは Server Component 側で
+  // 本物のセッション検証してから dashboard へ redirect する。
 
   return NextResponse.next();
 }
