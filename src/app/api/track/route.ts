@@ -11,7 +11,9 @@ import { eventDefinitions, events, sites } from "@/db/schema";
 //
 // 動作:
 //   1. siteId のサイトが存在するか確認
-//   2. event_definitions から (siteId, eventKey) で定義を引く (なければ null で続行)
+//   2. event_definitions から (siteId, eventKey) で定義を引く
+//      → 見つからなければ「初出キー」として自動登録 (isConversion=false で KPI 影響なし)
+//      → これにより /activity 画面で event_key と表示名が常に表示される
 //   3. events に type="conversion" / occurredAt=now で INSERT
 
 // libsql (Turso) を呼ぶので Node ランタイム必須。Edge 不可。
@@ -65,6 +67,10 @@ export async function POST(request: NextRequest) {
   if (typeof eventKey !== "string" || !eventKey || eventKey.length > MAX_KEY) {
     return json({ ok: false, error: "eventKey is required" }, { status: 400 });
   }
+  // 自動登録対象になるので、英数 + _:- のみに制限してDB汚染を防ぐ
+  if (!/^[a-zA-Z0-9_:-]+$/.test(eventKey)) {
+    return json({ ok: false, error: "eventKey contains invalid chars" }, { status: 400 });
+  }
 
   // metadata は JSON object のみ許可、シリアライズ後 2KB 超は拒否
   let safeMetadata: Record<string, unknown> | null = null;
@@ -93,12 +99,39 @@ export async function POST(request: NextRequest) {
     return json({ ok: false, error: "site is inactive" }, { status: 403 });
   }
 
-  // 対応する event_definition を引く。存在しなくても event は記録する。
-  const [def] = await db
+  // 対応する event_definition を引く。
+  let [def] = await db
     .select()
     .from(eventDefinitions)
     .where(and(eq(eventDefinitions.siteId, siteId), eq(eventDefinitions.key, eventKey)))
     .limit(1);
+
+  // 未登録キーなら自動登録: /activity で常に event_key + 表示名が見えるようにする。
+  // isConversion=false なので KPI/CV集計には影響しない。
+  // ユーザーは LP管理 → イベント定義 で後から label / isConversion を編集できる。
+  if (!def) {
+    try {
+      const [created] = await db
+        .insert(eventDefinitions)
+        .values({
+          siteId,
+          key: eventKey,
+          label: AUTO_LABEL[eventKey] ?? eventKey,
+          type: "conversion",
+          isConversion: false,
+        })
+        .returning();
+      def = created;
+    } catch {
+      // 同時並行リクエストで UNIQUE 衝突した場合は再取得
+      const [retry] = await db
+        .select()
+        .from(eventDefinitions)
+        .where(and(eq(eventDefinitions.siteId, siteId), eq(eventDefinitions.key, eventKey)))
+        .limit(1);
+      def = retry;
+    }
+  }
 
   await db.insert(events).values({
     siteId,
@@ -113,6 +146,16 @@ export async function POST(request: NextRequest) {
 
   return json({ ok: true });
 }
+
+// 推奨命名規則の自動 label。これら以外は key 自体を label として登録する。
+const AUTO_LABEL: Record<string, string> = {
+  lp_line_click: "LINE相談",
+  lp_tel_click: "電話タップ",
+  lp_form_submit: "お問い合わせ",
+  lp_cta_click: "CTAクリック",
+  lp_scroll_50: "50%スクロール",
+  pageview: "ページ表示",
+};
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);

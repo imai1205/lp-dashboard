@@ -13,6 +13,17 @@ const TYPE_STYLE: Record<EventLogRow["type"], string> = {
   conversion: "bg-amber-50 text-amber-700 border-amber-200",
 };
 
+// 推奨命名規則のフォールバック表示名。/api/track で自動登録される前の
+// レガシーイベント (event_definition_id=null) でも表示名が見えるように。
+const FALLBACK_LABEL: Record<string, string> = {
+  lp_line_click: "LINE相談",
+  lp_tel_click: "電話タップ",
+  lp_form_submit: "お問い合わせ",
+  lp_cta_click: "CTAクリック",
+  lp_scroll_50: "50%スクロール",
+  pageview: "ページ表示",
+};
+
 type Props = {
   data: EventLogRow[];
 };
@@ -67,7 +78,7 @@ export default function EventLogTable({ data }: Props) {
                     )}
                   </td>
                   <td className="px-5 py-3 text-slate-900 whitespace-nowrap">
-                    {row.label ?? (
+                    {row.label ?? FALLBACK_LABEL[row.eventKey ?? ""] ?? (
                       <span className="text-slate-400">(未定義)</span>
                     )}
                   </td>

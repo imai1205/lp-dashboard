@@ -133,7 +133,7 @@ export default function LpSaasDemoPage({ searchParams }: Props) {
 
         {/* CTA */}
         <section className="max-w-md mx-auto px-4 md:px-6 pb-12">
-          <DemoCTAs utm={utm} />
+          <DemoCTAs siteId={siteId} utm={utm} apiOrigin={APP_URL} />
         </section>
 
         {/* 特徴 3カラム */}

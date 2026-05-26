@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
   // 失敗しても inquiry 保存は成功させたいので別 try/catch でラップ
   try {
     const FORM_EVENT_KEY = "lp_form_submit";
-    const [def] = await db
+    let [def] = await db
       .select()
       .from(eventDefinitions)
       .where(
@@ -124,6 +124,35 @@ export async function POST(request: NextRequest) {
         ),
       )
       .limit(1);
+
+    // 未登録なら /activity で「お問い合わせ」と分かるように自動登録
+    if (!def) {
+      try {
+        const [createdDef] = await db
+          .insert(eventDefinitions)
+          .values({
+            siteId,
+            key: FORM_EVENT_KEY,
+            label: "お問い合わせ",
+            type: "conversion",
+            isConversion: false,
+          })
+          .returning();
+        def = createdDef;
+      } catch {
+        const [retry] = await db
+          .select()
+          .from(eventDefinitions)
+          .where(
+            and(
+              eq(eventDefinitions.siteId, siteId),
+              eq(eventDefinitions.key, FORM_EVENT_KEY),
+            ),
+          )
+          .limit(1);
+        def = retry;
+      }
+    }
 
     const [evt] = await db
       .insert(events)
