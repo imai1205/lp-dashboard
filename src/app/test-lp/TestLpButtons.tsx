@@ -3,13 +3,14 @@
 import { useState } from "react";
 
 // tracker.js が global に書き込む関数の型
+// (siteId はショートハンド呼び出し時に data-site-id から自動補完されるため optional)
 declare global {
   interface Window {
-    trackEvent?: (input: {
-      siteId: string;
-      eventKey: string;
-      metadata?: Record<string, unknown>;
-    }) => void;
+    trackEvent?: (
+      input:
+        | string
+        | { eventKey: string; siteId?: string; metadata?: Record<string, unknown> },
+    ) => void;
   }
 }
 

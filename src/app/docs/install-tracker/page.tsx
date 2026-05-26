@@ -344,6 +344,139 @@ export default function InstallTrackerDocsPage() {
           </div>
         </section>
 
+        {/* 動作検証 (デモLP) */}
+        <section className="bg-white rounded-2xl border-2 border-emerald-200 shadow-sm">
+          <div className="px-5 py-4 border-b border-emerald-100 bg-emerald-50/40">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white">
+                VERIFY
+              </span>
+              <h2 className="font-semibold text-slate-900">
+                テストLPで導入を検証する
+              </h2>
+            </div>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              本SaaSに同梱されている{" "}
+              <Link href="/lp-saas-demo" className="text-emerald-700 hover:underline font-medium">
+                /lp-saas-demo
+              </Link>{" "}
+              は、LINE / 電話 / 問い合わせフォームの3ボタンを実装済みの公開テストLPです。
+              <br />
+              tracker.js とGA4の両方が正しく動いているかを、外部LPに貼る前にここでまとめて検証できます。
+            </p>
+          </div>
+          <div className="p-5 space-y-5">
+            {/* セットアップ */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-2">
+                ① 環境変数のセットアップ
+              </h3>
+              <p className="text-xs text-slate-600 mb-2 leading-relaxed">
+                Vercel Project Settings → Environment Variables に下記2つを登録します
+                (ローカルなら .env.local)。
+              </p>
+              <CodeBlock
+                code={`NEXT_PUBLIC_DEMO_SITE_ID="<LP管理で作成したsiteのID>"
+NEXT_PUBLIC_GA4_MEASUREMENT_ID="G-XXXXXXXXXX"  # 任意 (GA4計測したい場合)`}
+              />
+              <ul className="mt-2 text-xs text-slate-600 space-y-1 list-disc list-inside">
+                <li>
+                  <code className="font-mono bg-slate-100 px-1 rounded">NEXT_PUBLIC_DEMO_SITE_ID</code>{" "}
+                  ──{" "}
+                  <Link href="/sites" className="text-brand-700 hover:underline">
+                    LP管理
+                  </Link>{" "}
+                  でデモ用siteを1件作り、その siteId をコピー
+                </li>
+                <li>
+                  <code className="font-mono bg-slate-100 px-1 rounded">NEXT_PUBLIC_GA4_MEASUREMENT_ID</code>{" "}
+                  ── GA4プロパティの「測定ID」(G- で始まる)。未設定でも tracker.js 部分だけ検証可能
+                </li>
+                <li>Vercelの場合は env 変更後に再デプロイが必要</li>
+              </ul>
+            </div>
+
+            {/* UTM URL */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-2">
+                ② 検証用URLにアクセスしてボタンをクリック
+              </h3>
+              <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+                以下のURLをコピーしてブラウザで開き、ページ内の LINE / 電話 / フォーム の3ボタンをそれぞれクリックします。
+                ページ最上部の黒帯でUTMが認識されていることを確認できます。
+              </p>
+              <div className="space-y-2">
+                <DemoUrl
+                  label="📱 Instagram 流入 (想定)"
+                  url={`${APP_URL}/lp-saas-demo?utm_source=instagram&utm_medium=social&utm_campaign=test`}
+                />
+                <DemoUrl
+                  label="🐦 X (Twitter) 流入 (想定)"
+                  url={`${APP_URL}/lp-saas-demo?utm_source=x&utm_medium=social&utm_campaign=test`}
+                />
+                <DemoUrl
+                  label="🔗 直接流入"
+                  url={`${APP_URL}/lp-saas-demo`}
+                />
+              </div>
+            </div>
+
+            {/* 確認手順 */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-2">
+                ③ 計測結果を確認
+              </h3>
+              <ol className="text-xs text-slate-600 space-y-2 list-decimal list-inside leading-relaxed">
+                <li>
+                  <Link href="/activity" className="text-brand-700 hover:underline font-medium">
+                    /activity (成果ログ)
+                  </Link>
+                  {" "}を開く ── 押したボタン分の{" "}
+                  <code className="font-mono bg-slate-100 px-1 rounded">lp_line_click</code>
+                  {" / "}
+                  <code className="font-mono bg-slate-100 px-1 rounded">lp_tel_click</code>
+                  {" / "}
+                  <code className="font-mono bg-slate-100 px-1 rounded">lp_form_submit</code>
+                  {" "}が即時表示されればtracker.jsはOK
+                </li>
+                <li>
+                  <Link href="/inquiries" className="text-brand-700 hover:underline font-medium">
+                    /inquiries (問い合わせ管理)
+                  </Link>
+                  {" "}を開く ── 「お問い合わせフォーム」ボタンから送信したテスト内容が一覧に表示されればフォーム連携もOK
+                </li>
+                <li>
+                  <Link href="/dashboard" className="text-brand-700 hover:underline font-medium">
+                    /dashboard (ダッシュボード)
+                  </Link>
+                  {" "}を開く ── 「流入元ランキング」に instagram / x / direct 等が表示される
+                  (GA4側で計測される値。次の cron 同期もしくは手動同期後に反映)
+                </li>
+              </ol>
+            </div>
+
+            {/* GA4 同期タイミング */}
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1.5 leading-relaxed">
+              <div className="font-semibold text-slate-700">
+                ℹ GA4 由来の流入元データの反映について
+              </div>
+              <div>
+                GA4 → 本SaaS の{" "}
+                <code className="font-mono bg-white px-1 rounded">analytics_sources_daily</code>{" "}
+                への同期は毎日 03:00 JST (Vercel Cron) で自動実行されます。
+                即時確認したい場合は{" "}
+                <Link href="/sites" className="text-brand-700 hover:underline">
+                  LP管理
+                </Link>{" "}
+                の各サイト詳細から手動同期できます (GA4プロパティID設定が必要)。
+              </div>
+              <div>
+                tracker.js 側 (CV/アクション別) は API 着信後すぐに反映され、cron 待ちは不要です。
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* トラブルシューティング */}
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
           <div className="px-5 py-4 border-b border-slate-100">
@@ -444,6 +577,31 @@ function Tips({ title, body }: { title: string; body: string }) {
     <div className="border-l-4 border-amber-300 pl-3 py-1">
       <div className="text-sm font-medium text-slate-900">{title}</div>
       <div className="text-xs text-slate-600 mt-0.5">{body}</div>
+    </div>
+  );
+}
+
+function DemoUrl({ label, url }: { label: string; url: string }) {
+  const path = url.replace(/^https?:\/\/[^/]+/, "");
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+        <span className="text-xs font-medium text-slate-700">{label}</span>
+        <div className="flex items-center gap-2">
+          <Link
+            href={path}
+            target="_blank"
+            rel="noopener"
+            className="text-[11px] px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition"
+          >
+            開く →
+          </Link>
+          <CopyButton text={url} />
+        </div>
+      </div>
+      <code className="block text-[11px] font-mono bg-slate-50 text-slate-700 rounded px-2 py-1 overflow-x-auto whitespace-nowrap">
+        {url}
+      </code>
     </div>
   );
 }
