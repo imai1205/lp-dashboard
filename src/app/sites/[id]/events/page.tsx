@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
+import SavedBanner from "@/components/ui/SavedBanner";
 import { getSession } from "@/features/auth/queries";
 import { getMySiteWithOrg } from "@/features/sites";
 import {
@@ -51,6 +52,7 @@ export default async function SiteEventsPage({ params }: Props) {
             <span className="text-xs text-slate-500">イベント定義</span>
           </div>
 
+          <SavedBanner />
           <CreateEventDefinitionForm siteId={siteRow.site.id} />
           <EventDefinitionTable siteId={siteRow.site.id} data={defs} />
 

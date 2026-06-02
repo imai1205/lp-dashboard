@@ -88,6 +88,7 @@ export async function createEventDefinition(formData: FormData): Promise<void> {
 
   revalidatePath(`/sites/${siteId}/events`);
   revalidatePath("/dashboard");
+  redirect(`/sites/${siteId}/events?saved=1`);
 }
 
 // --- update -----------------------------------------------------------------
@@ -121,6 +122,7 @@ export async function updateEventDefinition(formData: FormData): Promise<void> {
   revalidatePath(`/sites/${siteId}/events`);
   revalidatePath(`/sites/${siteId}/events/${id}/edit`);
   revalidatePath("/dashboard");
+  redirect(`/sites/${siteId}/events?saved=1`);
 }
 
 // --- delete -----------------------------------------------------------------

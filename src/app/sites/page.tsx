@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
+import SavedBanner from "@/components/ui/SavedBanner";
 import { getSession } from "@/features/auth/queries";
 import { getMyOrganizations } from "@/features/organizations/queries";
 import {
@@ -29,6 +30,7 @@ export default async function SitesPage() {
           subtitle="所属組織配下のサイトを作成・編集・削除できます"
         />
         <main className="flex-1 p-4 md:p-6 space-y-6">
+          <SavedBanner />
           <CreateSiteForm organizations={organizations} />
           <SiteAdminTable data={sites} />
 

@@ -71,6 +71,7 @@ export async function createSite(formData: FormData): Promise<void> {
 
   revalidatePath("/sites");
   revalidatePath("/dashboard");
+  redirect("/sites?saved=1");
 }
 
 // --- update ---------------------------------------------------------------
@@ -107,6 +108,7 @@ export async function updateSite(formData: FormData): Promise<void> {
   revalidatePath("/sites");
   revalidatePath(`/sites/${id}/edit`);
   revalidatePath("/dashboard");
+  redirect("/sites?saved=1");
 }
 
 // --- delete ---------------------------------------------------------------
