@@ -19,12 +19,12 @@ export const summary: Summary = {
 };
 
 export const referrerRanking: ReferrerRank[] = [
-  { source: "Google 検索", visitors: 18_420, conversions: 612 },
-  { source: "Yahoo!広告", visitors: 9_830, conversions: 254 },
-  { source: "X (Twitter)", visitors: 5_210, conversions: 168 },
-  { source: "Instagram", visitors: 4_125, conversions: 121 },
-  { source: "ダイレクト", visitors: 2_980, conversions: 79 },
-  { source: "メルマガ", visitors: 1_745, conversions: 50 },
+  { source: "google", label: "Google検索", icon: "🔍", visitors: 18_420, conversions: 612 },
+  { source: "yahoo", label: "Yahoo!検索", icon: "🔍", visitors: 9_830, conversions: 254 },
+  { source: "x", label: "X (Twitter)", icon: "𝕏", visitors: 5_210, conversions: 168 },
+  { source: "instagram", label: "Instagram", icon: "📷", visitors: 4_125, conversions: 121 },
+  { source: "(direct)", label: "直接アクセス", icon: "🔗", visitors: 2_980, conversions: 79 },
+  { source: "newsletter", label: "メルマガ", icon: "📧", visitors: 1_745, conversions: 50 },
 ];
 
 export const actionResults: ActionResult[] = [

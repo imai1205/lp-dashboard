@@ -6,8 +6,11 @@
  *   <script src="https://lp-dashboard-eight.vercel.app/tracker.js"
  *           data-site-id="xxx"></script>
  *
- * ボタン等から:
+ * 自動で実行:
+ *   - ページロード時に pageview を送信 (referrer / UTM / visitorId 付き)
+ *   - sessionStorage で visitorId を発行・継続 (タブ内のセッション識別)
  *
+ * 手動呼び出し:
  *   <button onclick="trackEvent('lp_line_click')">LINEで相談</button>
  *
  * 詳細:
@@ -20,9 +23,7 @@
   "use strict";
   if (typeof window === "undefined") return;
 
-  // 0. 二重ロード防止 — 同じページに <script> が2つ含まれてしまった場合でも
-  //    最初のロードだけ有効にし、後続は no-op。1度成功した window.trackEvent も
-  //    上書きされないので、data-site-id が上書きされる事故も防げる。
+  // 0. 二重ロード防止
   if (window.__LP_TRACKER_LOADED__) return;
   window.__LP_TRACKER_LOADED__ = true;
 
@@ -41,16 +42,13 @@
   var defaultSiteId = "";
 
   if (thisScript) {
-    // 2. src 属性から APIオリジンを推測 (LP側はURLを意識しなくてよい)
     try {
       apiOrigin = new URL(thisScript.src, location.href).origin;
     } catch (_) {}
 
-    // 3. data-site-id 属性から siteId デフォルトを取得
     var dataSiteId = thisScript.getAttribute("data-site-id");
     if (typeof dataSiteId === "string" && dataSiteId) {
       defaultSiteId = dataSiteId;
-      // window.LP_TRACKING_SITE_ID 経由でも参照できるよう同期
       if (!window.LP_TRACKING_SITE_ID) {
         window.LP_TRACKING_SITE_ID = dataSiteId;
       }
@@ -62,6 +60,56 @@
     return;
   }
 
+  // 2. visitor 識別子 (タブを閉じるまで継続)
+  function genId() {
+    return (
+      Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10)
+    );
+  }
+  var visitorId = "";
+  try {
+    visitorId = sessionStorage.getItem("__lp_vid") || "";
+    if (!visitorId) {
+      visitorId = genId();
+      sessionStorage.setItem("__lp_vid", visitorId);
+    }
+  } catch (_) {
+    // プライベートブラウジング等で sessionStorage が使えない場合は ephemeral
+    visitorId = genId();
+  }
+
+  // 3. UTM / referrer をURLとdocumentから抽出
+  function getQueryParam(name) {
+    try {
+      var url = new URL(location.href);
+      return url.searchParams.get(name) || undefined;
+    } catch (_) {
+      return undefined;
+    }
+  }
+  function getReferrerHost() {
+    try {
+      if (!document.referrer) return undefined;
+      var u = new URL(document.referrer);
+      // 自LP内遷移は除外
+      if (u.host === location.host) return undefined;
+      return u.host;
+    } catch (_) {
+      return undefined;
+    }
+  }
+
+  var pageContext = {
+    utm_source: getQueryParam("utm_source"),
+    utm_medium: getQueryParam("utm_medium"),
+    utm_campaign: getQueryParam("utm_campaign"),
+    utm_term: getQueryParam("utm_term"),
+    utm_content: getQueryParam("utm_content"),
+    referrer: getReferrerHost(),
+    page_path: location.pathname + location.search,
+    visitor_id: visitorId,
+  };
+
   /**
    * 計測イベントを送信。
    *
@@ -69,8 +117,6 @@
    *   trackEvent("lp_line_click")
    *   trackEvent({ eventKey: "lp_line_click" })
    *   trackEvent({ siteId: "xxx", eventKey: "lp_line_click", metadata: {...} })
-   *
-   * @param {string | { siteId?: string, eventKey: string, metadata?: object }} input
    */
   window.trackEvent = function (input) {
     var siteId = "";
@@ -78,7 +124,6 @@
     var metadata;
 
     if (typeof input === "string") {
-      // ショートハンド: trackEvent("eventKey")
       eventKey = input;
     } else if (input && typeof input === "object") {
       eventKey = typeof input.eventKey === "string" ? input.eventKey : "";
@@ -90,7 +135,6 @@
       }
     }
 
-    // input で siteId が指定されていなければ data-site-id / グローバル変数から拾う
     if (!siteId) {
       siteId =
         defaultSiteId ||
@@ -111,12 +155,28 @@
       return;
     }
 
-    var body = { siteId: siteId, eventKey: eventKey };
-    if (metadata) body.metadata = metadata;
+    // ページコンテキスト (utm/referrer/visitorId/page_path) を毎回 metadata に同梱。
+    // 個別 metadata 側のキーが優先 (上書き可)。
+    var mergedMeta = {};
+    for (var k in pageContext) {
+      if (
+        Object.prototype.hasOwnProperty.call(pageContext, k) &&
+        pageContext[k] !== undefined
+      ) {
+        mergedMeta[k] = pageContext[k];
+      }
+    }
+    if (metadata) {
+      for (var mk in metadata) {
+        if (Object.prototype.hasOwnProperty.call(metadata, mk)) {
+          mergedMeta[mk] = metadata[mk];
+        }
+      }
+    }
+
+    var body = { siteId: siteId, eventKey: eventKey, metadata: mergedMeta };
 
     try {
-      // keepalive: クリック直後のページ遷移でも送信が完走
-      // credentials: "omit": 外部LPから Cookie を送らない (公開計測のため)
       fetch(apiOrigin + "/api/track", {
         method: "POST",
         mode: "cors",
@@ -131,4 +191,16 @@
       console.warn("[trackEvent] failed", err);
     }
   };
+
+  // 4. ページロード時に pageview を自動送信。
+  //    DOMContentLoaded を待つことで siteId / metadata 準備完了後に確実に走らせる。
+  function firePageview() {
+    if (!defaultSiteId && !window.LP_TRACKING_SITE_ID) return;
+    window.trackEvent("pageview");
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", firePageview);
+  } else {
+    firePageview();
+  }
 })();

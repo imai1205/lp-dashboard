@@ -107,18 +107,19 @@ export async function POST(request: NextRequest) {
     .limit(1);
 
   // 未登録キーなら自動登録: /activity で常に event_key + 表示名が見えるようにする。
-  // isConversion=false なので KPI/CV集計には影響しない。
-  // ユーザーは LP管理 → イベント定義 で後から label / isConversion を編集できる。
+  // 標準CVキー (lp_*) は is_conversion=true で KPI に直結。pageview は type="pageview"。
+  // それ以外のカスタムキーは is_conversion=false で登録し、ユーザーが LP管理で個別に有効化。
   if (!def) {
+    const auto = autoDefaults(eventKey);
     try {
       const [created] = await db
         .insert(eventDefinitions)
         .values({
           siteId,
           key: eventKey,
-          label: AUTO_LABEL[eventKey] ?? eventKey,
-          type: "conversion",
-          isConversion: false,
+          label: auto.label,
+          type: auto.type,
+          isConversion: auto.isConversion,
         })
         .returning();
       def = created;
@@ -133,29 +134,65 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // metadata から page/utm/referrer/visitor を抽出してカラムに昇格
+  // (events テーブルの個別カラムに入れることで集計クエリが効率的になる)
+  const ctx = safeMetadata ?? {};
+  const pickStr = (key: string): string | null => {
+    const v = ctx[key];
+    return typeof v === "string" && v ? v.slice(0, 200) : null;
+  };
+
   await db.insert(events).values({
     siteId,
     eventDefinitionId: def?.id ?? null,
-    // 定義があればその type を使う。なければ既定で "conversion"
-    type: def?.type ?? "conversion",
+    // 定義があればその type を使う。なければ pageview / それ以外で分岐
+    type: def?.type ?? (eventKey === "pageview" ? "pageview" : "conversion"),
     occurredAt: new Date(),
     metadata: safeMetadata,
-    referrer: request.headers.get("referer"),
+    source: pickStr("utm_source"),
+    medium: pickStr("utm_medium"),
+    campaign: pickStr("utm_campaign"),
+    pagePath: pickStr("page_path"),
+    visitorId: pickStr("visitor_id"),
+    referrer:
+      pickStr("referrer") ?? request.headers.get("referer"),
     userAgent: request.headers.get("user-agent"),
   });
 
   return json({ ok: true });
 }
 
-// 推奨命名規則の自動 label。これら以外は key 自体を label として登録する。
-const AUTO_LABEL: Record<string, string> = {
-  lp_line_click: "LINE相談",
-  lp_tel_click: "電話タップ",
-  lp_form_submit: "お問い合わせ",
-  lp_cta_click: "CTAクリック",
-  lp_scroll_50: "50%スクロール",
-  pageview: "ページ表示",
-};
+// 推奨命名規則ごとの自動初期値 (label / type / isConversion)。
+// 標準CVキー (lp_line_click 等) はデフォルトでCV扱いにする。
+// pageview は PV計測なので type=pageview、CVではない。
+function autoDefaults(eventKey: string): {
+  label: string;
+  type: "pageview" | "visit" | "conversion";
+  isConversion: boolean;
+} {
+  const standard: Record<
+    string,
+    { label: string; type: "pageview" | "visit" | "conversion"; isConversion: boolean }
+  > = {
+    lp_line_click: { label: "LINE相談", type: "conversion", isConversion: true },
+    lp_tel_click: { label: "電話タップ", type: "conversion", isConversion: true },
+    lp_form_submit: { label: "お問い合わせ", type: "conversion", isConversion: true },
+    lp_cta_click: { label: "CTAクリック", type: "conversion", isConversion: true },
+    lp_scroll_50: {
+      label: "50%スクロール",
+      type: "conversion",
+      isConversion: false,
+    },
+    pageview: { label: "ページ表示", type: "pageview", isConversion: false },
+  };
+  return (
+    standard[eventKey] ?? {
+      label: eventKey,
+      type: "conversion",
+      isConversion: false,
+    }
+  );
+}
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);

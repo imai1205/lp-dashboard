@@ -5,8 +5,10 @@ import { getSession } from "@/features/auth/queries";
 import { SiteList, getMySitesWithOrg } from "@/features/sites";
 import { KpiCard, getDashboardSummary } from "@/features/dashboard";
 import {
+  ActionResultsTable,
   DailyTrendChart,
   SourceRankingTable,
+  getActionResults,
   getDailyTrend,
   getSourceRanking,
 } from "@/features/analytics";
@@ -44,10 +46,11 @@ export default async function DashboardPage({ searchParams }: Props) {
   const selected = requested ?? sites[0];
 
   // 選択サイトの集計を並列フェッチ
-  const [summary, sources, trend] = await Promise.all([
+  const [summary, sources, trend, actions] = await Promise.all([
     getDashboardSummary(selected.site.id),
     getSourceRanking(selected.site.id),
     getDailyTrend(selected.site.id),
+    getActionResults(selected.site.id, { conversionOnly: true }),
   ]);
 
   return (
@@ -115,9 +118,10 @@ export default async function DashboardPage({ searchParams }: Props) {
             />
           </section>
 
-          {/* 流入元ランキング */}
-          <section>
+          {/* 流入元ランキング + アクション別成果 (2カラム) */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SourceRankingTable data={sources} />
+            <ActionResultsTable data={actions} />
           </section>
 
           {/* サイト一覧 (選択中をハイライト、行末で切替可能) */}

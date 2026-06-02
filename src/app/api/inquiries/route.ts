@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       )
       .limit(1);
 
-    // 未登録なら /activity で「お問い合わせ」と分かるように自動登録
+    // 未登録なら /activity で「お問い合わせ」と分かるように自動登録 (CV扱い)
     if (!def) {
       try {
         const [createdDef] = await db
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
             key: FORM_EVENT_KEY,
             label: "お問い合わせ",
             type: "conversion",
-            isConversion: false,
+            isConversion: true,
           })
           .returning();
         def = createdDef;

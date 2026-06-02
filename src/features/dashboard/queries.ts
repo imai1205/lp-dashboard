@@ -24,7 +24,7 @@ function relDelta(prev: number, curr: number): number {
 }
 
 export async function getDashboardSummary(siteId: string): Promise<Summary> {
-  // 1. impressions / visitors は引き続き analytics_daily から取得
+  // 1. impressions / visitors は analytics_daily から取得 (GA4由来)
   const dailyRows = await db
     .select({
       date: analyticsDaily.date,
@@ -63,7 +63,29 @@ export async function getDashboardSummary(siteId: string): Promise<Summary> {
     conversions: convByDate.get(r.date) ?? 0,
   }));
 
-  const totals = sumOf(rows);
+  let totals = sumOf(rows);
+
+  // 4. GA4 由来の impressions が 0 の場合、tracker.js の pageview イベントから推定
+  //    (GA4 未設定の顧客や 24h ラグ期間でも数値が見えるようにする)
+  if (totals.impressions === 0 || totals.visitors === 0) {
+    const [pvFallback] = await db
+      .select({
+        impressions: sql<number>`count(*)`,
+        visitors: sql<number>`count(distinct ${events.visitorId})`,
+      })
+      .from(events)
+      .where(and(eq(events.siteId, siteId), eq(events.type, "pageview")));
+
+    const fallbackImpressions = Number(pvFallback?.impressions ?? 0);
+    const fallbackVisitors = Number(pvFallback?.visitors ?? 0);
+
+    if (totals.impressions === 0 && fallbackImpressions > 0) {
+      totals = { ...totals, impressions: fallbackImpressions };
+    }
+    if (totals.visitors === 0 && fallbackVisitors > 0) {
+      totals = { ...totals, visitors: fallbackVisitors };
+    }
+  }
   const cvr = totals.visitors === 0 ? 0 : (totals.conversions / totals.visitors) * 100;
 
   // 前後半比較 (前月比の暫定: 真の前月集計に置換予定)
