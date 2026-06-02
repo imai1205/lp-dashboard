@@ -18,7 +18,8 @@ export default function Topbar({
           {subtitle}
         </p>
       </div>
-      {/* 期間切替セレクト + レポート出力ボタンは md 以上で表示 (まだ未実装の placeholder UI) */}
+      {/* 期間切替セレクトは md 以上で表示 (まだ未実装の placeholder UI、後で機能追加予定)。
+         レポート出力ボタンは未実装かつ MVP スコープ外のため一旦非表示。 */}
       <div className="hidden md:flex items-center gap-2 shrink-0">
         <select
           defaultValue="this_month"
@@ -30,9 +31,6 @@ export default function Topbar({
           <option value="last_month">先月</option>
           <option value="last_30days">直近30日</option>
         </select>
-        <button className="text-sm bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg transition">
-          レポート出力
-        </button>
       </div>
     </header>
   );
