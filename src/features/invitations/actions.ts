@@ -41,19 +41,32 @@ function parseRole(v: FormDataEntryValue | null): "admin" | "member" {
 // --- create -----------------------------------------------------------------
 // 招待を作る (= token付きURL生成)。メール送信はまだ未実装で、生成されたURLを
 // 発行者がコピペして相手に渡す運用。
-export async function createInvitation(formData: FormData): Promise<void> {
+//
+// バリデーションエラーは throw せず { error } を返し、フォーム側で
+// インライン表示する (useFormState 連携)。
+export type CreateInvitationState = { error?: string };
+
+export async function createInvitation(
+  _prev: CreateInvitationState,
+  formData: FormData,
+): Promise<CreateInvitationState> {
   const session = await requireSession();
 
   const organizationId = formData.get("organizationId");
   const email = formData.get("email");
   if (typeof organizationId !== "string" || !organizationId) {
-    throw new Error("組織IDが指定されていません");
+    return { error: "組織IDが指定されていません" };
   }
   if (!isValidEmail(email)) {
-    throw new Error("メールアドレスの形式が正しくありません");
+    return { error: "メールアドレスの形式が正しくありません" };
   }
   const role = parseRole(formData.get("role"));
-  await assertAdminOrOwner(session.user.id, organizationId);
+
+  try {
+    await assertAdminOrOwner(session.user.id, organizationId);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "権限エラー" };
+  }
 
   // 既存メンバーへの再招待を防ぐ (同じ email の user が既に member ならエラー)
   const trimmed = email.trim().toLowerCase();
@@ -74,7 +87,7 @@ export async function createInvitation(formData: FormData): Promise<void> {
       )
       .limit(1);
     if (existingMember) {
-      throw new Error("このユーザーは既にメンバーです");
+      return { error: "このメールアドレスのユーザーは既にメンバーです" };
     }
   }
 
