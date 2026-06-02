@@ -1,3 +1,4 @@
+import { isSystemAdmin } from "@/lib/admin";
 import MobileMenu from "./MobileMenu";
 import SidebarNav from "./SidebarNav";
 import SignOutButton from "./SignOutButton";
@@ -13,11 +14,12 @@ type Props = {
 export default function Sidebar({ user }: Props) {
   const displayName = user?.name || user?.email || "Account name";
   const initial = (displayName[0] ?? "A").toUpperCase();
+  const isAdmin = isSystemAdmin(user?.email);
 
   return (
     <>
       {/* モバイル用ドロワー (md未満で表示) */}
-      <MobileMenu user={user} />
+      <MobileMenu user={user} isAdmin={isAdmin} />
 
       {/* デスクトップ用サイドバー (md以上で表示) */}
       <aside className="hidden md:flex md:flex-col w-60 shrink-0 border-r border-slate-200 bg-white">
@@ -29,7 +31,7 @@ export default function Sidebar({ user }: Props) {
           <span className="font-semibold text-slate-900">LP Analytics</span>
         </div>
       </div>
-      <SidebarNav />
+      <SidebarNav isAdmin={isAdmin} />
       <div className="p-4 border-t border-slate-200 space-y-3">
         <div className="flex items-center gap-3">
           {user?.image ? (

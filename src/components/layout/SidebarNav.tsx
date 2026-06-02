@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 type NavItem = { label: string; icon: string; href?: string };
 
-const nav: NavItem[] = [
+const baseNav: NavItem[] = [
   { label: "ダッシュボード", icon: "📊", href: "/dashboard" },
   { label: "アクセス解析", icon: "📈", href: "/analytics" },
   { label: "成果ログ", icon: "🎯", href: "/activity" },
@@ -15,13 +15,21 @@ const nav: NavItem[] = [
   { label: "設定", icon: "⚙️", href: "/settings" },
 ];
 
+// SaaS提供者向け (SYSTEM_ADMIN_EMAILS) のみ表示
+const adminNav: NavItem[] = [
+  { label: "顧客管理", icon: "🛡", href: "/admin/customers" },
+];
+
 function isActive(pathname: string, href?: string) {
   if (!href) return false;
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export default function SidebarNav() {
+type Props = { isAdmin?: boolean };
+
+export default function SidebarNav({ isAdmin }: Props) {
   const pathname = usePathname();
+  const nav = isAdmin ? [...baseNav, ...adminNav] : baseNav;
 
   return (
     <nav className="flex-1 px-3 py-4 space-y-1">

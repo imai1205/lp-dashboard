@@ -10,12 +10,13 @@ type Props = {
     email: string;
     image?: string | null;
   };
+  isAdmin?: boolean;
 };
 
 // モバイル用ドロワー。
 // - md未満では左上ハンバーガー + スライドパネル + 背景オーバーレイ
 // - md以上 (デスクトップ) では何もレンダリングしない (Sidebar が見える)
-export default function MobileMenu({ user }: Props) {
+export default function MobileMenu({ user, isAdmin }: Props) {
   const [open, setOpen] = useState(false);
   const displayName = user?.name || user?.email || "Account name";
   const initial = (displayName[0] ?? "A").toUpperCase();
@@ -104,7 +105,7 @@ export default function MobileMenu({ user }: Props) {
 
         {/* ナビ (リンククリックでドロワーを閉じる用) */}
         <div onClick={() => setOpen(false)}>
-          <SidebarNav />
+          <SidebarNav isAdmin={isAdmin} />
         </div>
 
         {/* ユーザー情報 + ログアウト */}
