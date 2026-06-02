@@ -66,6 +66,37 @@ export async function getSourceRanking(siteId: string): Promise<ReferrerRank[]> 
   return [...merged.values()].sort((a, b) => b.visitors - a.visitors);
 }
 
+// ページ別表示回数: events.type='pageview' を page_path で group by。
+// tracker.js が拡張されて page_path を送るようになったので、これで URL別の
+// PV を顧客に見せられる (GA4 を設定していなくても tracker のみで集計可能)。
+export type PagePathStat = {
+  pagePath: string;
+  pageviews: number;
+  visitors: number;
+};
+
+export async function getPagePathBreakdown(siteId: string): Promise<PagePathStat[]> {
+  const rows = await db
+    .select({
+      pagePath: events.pagePath,
+      pageviews: sql<number>`count(*)`,
+      visitors: sql<number>`count(distinct ${events.visitorId})`,
+    })
+    .from(events)
+    .where(and(eq(events.siteId, siteId), eq(events.type, "pageview")))
+    .groupBy(events.pagePath)
+    .orderBy(desc(sql`2`))
+    .limit(20);
+
+  return rows
+    .filter((r) => r.pagePath != null)
+    .map((r) => ({
+      pagePath: r.pagePath ?? "(unknown)",
+      pageviews: Number(r.pageviews),
+      visitors: Number(r.visitors),
+    }));
+}
+
 // アクション別成果: event_definitions に events を LEFT JOIN して件数 count。
 // options.conversionOnly=true なら is_conversion=true の定義だけ集計対象とする。
 export async function getActionResults(

@@ -3,10 +3,12 @@
 export type Summary = {
   impressions: number;
   visitors: number;
+  sessions: number;
   conversions: number;
   cvr: number;
   impressionsDelta: number;
   visitorsDelta: number;
+  sessionsDelta: number;
   conversionsDelta: number;
   cvrDelta: number;
 };

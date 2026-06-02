@@ -10,9 +10,11 @@ import { KpiCard, getDashboardSummary } from "@/features/dashboard";
 import {
   ActionResultsTable,
   DailyTrendChart,
+  PagePathBreakdownTable,
   SourceRankingTable,
   getActionResults,
   getDailyTrend,
+  getPagePathBreakdown,
   getSourceRanking,
 } from "@/features/analytics";
 
@@ -72,11 +74,12 @@ export default async function DashboardPage({ searchParams }: Props) {
   }
 
   // 選択サイトの集計を並列フェッチ
-  const [summary, sources, trend, actions] = await Promise.all([
+  const [summary, sources, trend, actions, pageBreakdown] = await Promise.all([
     getDashboardSummary(selected.site.id),
     getSourceRanking(selected.site.id),
     getDailyTrend(selected.site.id),
     getActionResults(selected.site.id, { conversionOnly: true }),
+    getPagePathBreakdown(selected.site.id),
   ]);
 
   return (
@@ -88,8 +91,8 @@ export default async function DashboardPage({ searchParams }: Props) {
           subtitle={`${selected.organization.name} / ${selected.site.name}`}
         />
         <main className="flex-1 p-4 md:p-6 space-y-6">
-          {/* KPIカード */}
-          <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {/* KPIカード (5枚: 表示回数 / 訪問者 / セッション / 成果 / CV率) */}
+          <section className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             <KpiCard
               label="表示回数"
               value={summary.impressions.toLocaleString()}
@@ -105,6 +108,14 @@ export default async function DashboardPage({ searchParams }: Props) {
               delta={summary.visitorsDelta}
               icon="👥"
               tone="violet"
+            />
+            <KpiCard
+              label="セッション数"
+              value={summary.sessions.toLocaleString()}
+              unit="件"
+              delta={summary.sessionsDelta}
+              icon="🔁"
+              tone="blue"
             />
             <KpiCard
               label="成果数"
@@ -148,6 +159,11 @@ export default async function DashboardPage({ searchParams }: Props) {
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SourceRankingTable data={sources} />
             <ActionResultsTable data={actions} />
+          </section>
+
+          {/* ページ別表示回数 */}
+          <section>
+            <PagePathBreakdownTable data={pageBreakdown} />
           </section>
 
           {/* サイト一覧 (選択中をハイライト、行末で切替可能) */}

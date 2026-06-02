@@ -3,18 +3,29 @@ import { db } from "@/db/client";
 import { analyticsDaily, eventDefinitions, events } from "@/db/schema";
 import type { Summary } from "./types";
 
-type Totals = { impressions: number; visitors: number; conversions: number };
+type Totals = {
+  impressions: number;
+  visitors: number;
+  sessions: number;
+  conversions: number;
+};
 
 function sumOf(
-  rows: { impressions: number; visitors: number; conversions: number }[],
+  rows: {
+    impressions: number;
+    visitors: number;
+    sessions: number;
+    conversions: number;
+  }[],
 ): Totals {
   return rows.reduce<Totals>(
     (acc, r) => ({
       impressions: acc.impressions + r.impressions,
       visitors: acc.visitors + r.visitors,
+      sessions: acc.sessions + r.sessions,
       conversions: acc.conversions + r.conversions,
     }),
-    { impressions: 0, visitors: 0, conversions: 0 },
+    { impressions: 0, visitors: 0, sessions: 0, conversions: 0 },
   );
 }
 
@@ -24,12 +35,13 @@ function relDelta(prev: number, curr: number): number {
 }
 
 export async function getDashboardSummary(siteId: string): Promise<Summary> {
-  // 1. impressions / visitors は analytics_daily から取得 (GA4由来)
+  // 1. impressions / visitors / sessions は analytics_daily から取得 (GA4由来)
   const dailyRows = await db
     .select({
       date: analyticsDaily.date,
       impressions: analyticsDaily.impressions,
       visitors: analyticsDaily.visitors,
+      sessions: analyticsDaily.sessions,
     })
     .from(analyticsDaily)
     .where(eq(analyticsDaily.siteId, siteId))
@@ -60,6 +72,7 @@ export async function getDashboardSummary(siteId: string): Promise<Summary> {
   const rows = dailyRows.map((r) => ({
     impressions: r.impressions,
     visitors: r.visitors,
+    sessions: r.sessions,
     conversions: convByDate.get(r.date) ?? 0,
   }));
 
@@ -85,6 +98,8 @@ export async function getDashboardSummary(siteId: string): Promise<Summary> {
     if (totals.visitors === 0 && fallbackVisitors > 0) {
       totals = { ...totals, visitors: fallbackVisitors };
     }
+    // sessions は GA4 由来のみ。tracker側にsessionId未実装のため、
+    // GA4未同期サイトでは sessions=0 となる (KPIカードで明示)
   }
   const cvr = totals.visitors === 0 ? 0 : (totals.conversions / totals.visitors) * 100;
 
@@ -98,10 +113,12 @@ export async function getDashboardSummary(siteId: string): Promise<Summary> {
   return {
     impressions: totals.impressions,
     visitors: totals.visitors,
+    sessions: totals.sessions,
     conversions: totals.conversions,
     cvr,
     impressionsDelta: relDelta(previous.impressions, current.impressions),
     visitorsDelta: relDelta(previous.visitors, current.visitors),
+    sessionsDelta: relDelta(previous.sessions, current.sessions),
     conversionsDelta: relDelta(previous.conversions, current.conversions),
     cvrDelta: relDelta(prevCvr, currCvr),
   };

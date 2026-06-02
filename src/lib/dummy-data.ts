@@ -10,10 +10,12 @@ export type { Summary, ReferrerRank, ActionResult, Inquiry };
 export const summary: Summary = {
   impressions: 128_540,
   visitors: 42_310,
+  sessions: 51_870,
   conversions: 1_284,
   cvr: 3.04,
   impressionsDelta: 12.4,
   visitorsDelta: 8.1,
+  sessionsDelta: 9.2,
   conversionsDelta: 15.7,
   cvrDelta: 0.7,
 };
