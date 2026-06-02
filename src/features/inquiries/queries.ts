@@ -96,6 +96,7 @@ export async function listMyInquiries(
     name: r.name,
     email: r.email,
     phone: r.phone,
+    company: r.company,
     message: r.message,
     status: r.status,
     receivedAt: r.receivedAt.toISOString(),

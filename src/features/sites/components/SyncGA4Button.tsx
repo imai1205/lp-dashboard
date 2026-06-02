@@ -22,9 +22,17 @@ export default function SyncGA4Button({ siteId, disabled }: Props) {
       try {
         const fd = new FormData();
         fd.set("siteId", siteId);
-        await syncSiteAnalyticsAction(fd);
+        const result = await syncSiteAnalyticsAction(fd);
         setStatus("ok");
-        setMessage("GA4 から取得して保存しました");
+        if (result.dailyUpserted === 0 && result.sourcesUpserted === 0) {
+          setMessage(
+            `同期完了。ただし GA4 から取得できたデータは0件でした (期間: ${result.rangeStart}〜${result.rangeEnd}, GA4 Data API は当日データに24〜48hの遅延あり)`,
+          );
+        } else {
+          setMessage(
+            `日別データ ${result.dailyUpserted}件 / 流入元 ${result.sourcesUpserted}件 を取得・保存しました (期間: ${result.rangeStart}〜${result.rangeEnd})`,
+          );
+        }
       } catch (err) {
         setStatus("error");
         setMessage(err instanceof Error ? err.message : String(err));
@@ -33,20 +41,22 @@ export default function SyncGA4Button({ siteId, disabled }: Props) {
   };
 
   return (
-    <div className="flex items-center gap-3">
-      <button
-        type="button"
-        onClick={handle}
-        disabled={pending || disabled}
-        className="text-sm bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg transition disabled:opacity-50"
-      >
-        {pending ? "同期中…" : "GA4から今すぐ同期"}
-      </button>
+    <div className="space-y-2">
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          type="button"
+          onClick={handle}
+          disabled={pending || disabled}
+          className="text-sm bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg transition disabled:opacity-50"
+        >
+          {pending ? "同期中…" : "GA4から今すぐ同期"}
+        </button>
+      </div>
       {status === "ok" && (
-        <span className="text-xs text-emerald-700">✓ {message}</span>
+        <p className="text-xs text-emerald-700 leading-relaxed">✓ {message}</p>
       )}
       {status === "error" && (
-        <span className="text-xs text-rose-700">⚠ {message}</span>
+        <p className="text-xs text-rose-700 leading-relaxed">⚠ {message}</p>
       )}
     </div>
   );

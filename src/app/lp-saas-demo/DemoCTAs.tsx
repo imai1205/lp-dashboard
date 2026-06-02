@@ -31,7 +31,13 @@ export default function DemoCTAs({ siteId, utm, apiOrigin }: Props) {
   const [lastSent, setLastSent] = useState<EventKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    message: "",
+  });
 
   // LINE / 電話: tracker.js (window.trackEvent) で events だけ記録
   const fireClick = (eventKey: "lp_line_click" | "lp_tel_click") => {
@@ -72,6 +78,8 @@ export default function DemoCTAs({ siteId, utm, apiOrigin }: Props) {
           siteId,
           name: form.name,
           email: form.email,
+          phone: form.phone || undefined,
+          company: form.company || undefined,
           message: form.message || "(デモLPからのテスト送信)",
         }),
       });
@@ -81,7 +89,7 @@ export default function DemoCTAs({ siteId, utm, apiOrigin }: Props) {
         return;
       }
       setLastSent("lp_form_submit");
-      setForm({ name: "", email: "", message: "" });
+      setForm({ name: "", email: "", phone: "", company: "", message: "" });
       window.setTimeout(() => setLastSent(null), 4000);
     } catch (err) {
       setError(`送信失敗: ${(err as Error).message}`);
@@ -154,6 +162,26 @@ export default function DemoCTAs({ siteId, utm, apiOrigin }: Props) {
           disabled={submitting}
           className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:bg-slate-50"
         />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input
+            type="tel"
+            name="phone"
+            placeholder="電話番号 (任意)"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            disabled={submitting}
+            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:bg-slate-50"
+          />
+          <input
+            type="text"
+            name="company"
+            placeholder="会社名 (任意)"
+            value={form.company}
+            onChange={(e) => setForm({ ...form, company: e.target.value })}
+            disabled={submitting}
+            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:bg-slate-50"
+          />
+        </div>
         <textarea
           name="message"
           rows={3}

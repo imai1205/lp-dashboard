@@ -9,8 +9,9 @@ import {
   EditSiteForm,
   EmbedCodeBlock,
   SyncGA4Button,
-  getMySiteWithOrg,
+  getMySiteWithSyncStatus,
 } from "@/features/sites";
+import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,8 @@ export default async function EditSitePage({ params }: Props) {
   if (!session) redirect("/login");
 
   // 所属組織のサイトでなければ 404 扱い (権限漏洩防止)
-  const row = await getMySiteWithOrg(session.user.id, params.id);
+  // sync status (最終同期日時 + 同期済日数) 込みで取得
+  const row = await getMySiteWithSyncStatus(session.user.id, params.id);
   if (!row) notFound();
 
   // 埋め込みコードの per-event スニペット用に event_definitions も取得 (並列フェッチでも可)
@@ -91,7 +93,26 @@ export default async function EditSitePage({ params }: Props) {
                 )}
               </p>
             </div>
-            <div className="px-5 py-4">
+            <div className="px-5 py-4 space-y-3">
+              {/* 同期ステータス */}
+              <div className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="text-slate-500">最終同期:</span>
+                {row.lastSyncedAt ? (
+                  <>
+                    <span className="font-mono text-slate-900">
+                      {formatDateTime(row.lastSyncedAt)}
+                    </span>
+                    <span className="text-slate-400">·</span>
+                    <span className="text-slate-600">
+                      取得済み {row.syncedDays} 日分
+                    </span>
+                  </>
+                ) : (
+                  <span className="inline-block text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                    未同期
+                  </span>
+                )}
+              </div>
               <SyncGA4Button
                 siteId={row.site.id}
                 disabled={!row.site.ga4PropertyId}

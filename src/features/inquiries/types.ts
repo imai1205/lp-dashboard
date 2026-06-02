@@ -30,6 +30,7 @@ export type InquiryAdminRow = {
   name: string;
   email: string;
   phone: string | null;
+  company: string | null;
   message: string;
   status: InquiryStatus;
   receivedAt: string; // ISO

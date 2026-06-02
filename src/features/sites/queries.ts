@@ -87,6 +87,30 @@ export async function getMySiteWithOrg(
   return row ?? null;
 }
 
+// 単一サイトの「最終同期日時 / 同期済日数」を返す。サイト編集画面で表示。
+export async function getMySiteWithSyncStatus(
+  userId: string,
+  siteId: string,
+): Promise<SiteWithSyncStatus | null> {
+  const base = await getMySiteWithOrg(userId, siteId);
+  if (!base) return null;
+
+  const [row] = await db
+    .select({
+      maxUpdatedUnix: sql<number | null>`max(unixepoch(${analyticsDaily.updatedAt}))`,
+      daysCount: sql<number>`count(*)`,
+    })
+    .from(analyticsDaily)
+    .where(eq(analyticsDaily.siteId, siteId));
+
+  return {
+    ...base,
+    lastSyncedAt:
+      row?.maxUpdatedUnix != null ? new Date(row.maxUpdatedUnix * 1000) : null,
+    syncedDays: Number(row?.daysCount ?? 0),
+  };
+}
+
 // 設定画面用: getMySitesWithOrg の結果に「最終同期日時 / 同期済日数」を追加する。
 // 2クエリ構成 (site一覧 → analytics_daily 集計) で N+1 回避。
 export async function getMySitesWithSyncStatus(

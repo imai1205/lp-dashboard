@@ -133,6 +133,14 @@ export default function InquiryDetailButton({ row }: Props) {
                 )}
               </Field>
 
+              <Field label="会社名">
+                {row.company ? (
+                  <span className="text-slate-900 text-sm">{row.company}</span>
+                ) : (
+                  <span className="text-slate-400 text-sm">—</span>
+                )}
+              </Field>
+
               <Field label="問い合わせ内容">
                 <p className="text-slate-700 text-sm whitespace-pre-wrap break-words rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
                   {row.message}

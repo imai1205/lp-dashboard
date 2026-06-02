@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
+import { inArray } from "drizzle-orm";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
+import { db } from "@/db/client";
+import { analyticsDaily, events } from "@/db/schema";
 import { getSession } from "@/features/auth/queries";
 import { SiteList, getMySitesWithOrg } from "@/features/sites";
 import { KpiCard, getDashboardSummary } from "@/features/dashboard";
@@ -41,9 +44,32 @@ export default async function DashboardPage({ searchParams }: Props) {
     );
   }
 
-  // 選択中サイトを決定: URLパラメータ ?site=<id> > 一覧の先頭
+  // 選択中サイトを決定:
+  //   1. URLパラメータ ?site=<id> があればそれを優先 (明示的選択)
+  //   2. 無ければ「データ有 (analytics_daily か events に行があるサイト)」を優先
+  //   3. それも無ければ一覧の先頭 (新規ユーザー想定: 何でも0表示の方が分かりやすい)
   const requested = sites.find((s) => s.site.id === searchParams.site);
-  const selected = requested ?? sites[0];
+  let selected = requested;
+  if (!selected) {
+    const siteIds = sites.map((s) => s.site.id);
+    const [activeAnalytics, activeEvents] = await Promise.all([
+      db
+        .select({ siteId: analyticsDaily.siteId })
+        .from(analyticsDaily)
+        .where(inArray(analyticsDaily.siteId, siteIds))
+        .groupBy(analyticsDaily.siteId),
+      db
+        .select({ siteId: events.siteId })
+        .from(events)
+        .where(inArray(events.siteId, siteIds))
+        .groupBy(events.siteId),
+    ]);
+    const activeSet = new Set<string>([
+      ...activeAnalytics.map((r) => r.siteId),
+      ...activeEvents.map((r) => r.siteId),
+    ]);
+    selected = sites.find((s) => activeSet.has(s.site.id)) ?? sites[0];
+  }
 
   // 選択サイトの集計を並列フェッチ
   const [summary, sources, trend, actions] = await Promise.all([

@@ -129,7 +129,18 @@ export async function deleteSite(formData: FormData): Promise<void> {
 
 // --- GA4 sync (UI ボタン用 Server Action ラッパー) ---------------------
 // cron からは syncSiteAnalytics / syncAllSites を直接呼ぶ。
-export async function syncSiteAnalyticsAction(formData: FormData): Promise<void> {
+//
+// 戻り値はクライアント側で「✓ X日分 / 流入元Y件」と表示するために使う。
+export type SyncActionResult = {
+  dailyUpserted: number;
+  sourcesUpserted: number;
+  rangeStart: string;
+  rangeEnd: string;
+};
+
+export async function syncSiteAnalyticsAction(
+  formData: FormData,
+): Promise<SyncActionResult> {
   const session = await requireSession();
 
   const siteId = formData.get("siteId");
@@ -138,9 +149,16 @@ export async function syncSiteAnalyticsAction(formData: FormData): Promise<void>
   await assertSiteOwnership(session.user.id, siteId);
 
   // ユーザーOAuthトークン方式: そのユーザー自身が GA4 へアクセス権を持っている前提
-  await syncSiteAnalytics(session.user.id, siteId);
+  const result = await syncSiteAnalytics(session.user.id, siteId);
 
   revalidatePath("/");
   revalidatePath("/dashboard");
   revalidatePath(`/sites/${siteId}/edit`);
+
+  return {
+    dailyUpserted: result.dailyUpserted,
+    sourcesUpserted: result.sourcesUpserted,
+    rangeStart: result.range.start,
+    rangeEnd: result.range.end,
+  };
 }
