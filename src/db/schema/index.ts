@@ -7,6 +7,7 @@ export * from "./accounts";
 export * from "./sessions";
 export * from "./verifications";
 export * from "./organization-members";
+export * from "./organization-invitations";
 export * from "./sites";
 export * from "./event-definitions";
 export * from "./events";
