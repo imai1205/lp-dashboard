@@ -39,6 +39,9 @@ export default function SiteList({ data, currentSiteId }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 bg-slate-50">
+                <th className="px-5 py-2 font-medium" style={{ width: 100 }}>
+                  操作
+                </th>
                 <th className="px-5 py-2 font-medium">サイト名</th>
                 <th className="px-5 py-2 font-medium">ドメイン</th>
                 <th className="px-5 py-2 font-medium">所属組織</th>
@@ -46,7 +49,6 @@ export default function SiteList({ data, currentSiteId }: Props) {
                 <th className="px-5 py-2 font-medium">Tracking ID</th>
                 <th className="px-5 py-2 font-medium text-center">状態</th>
                 <th className="px-5 py-2 font-medium">作成日時</th>
-                <th className="px-5 py-2 font-medium text-right">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -60,18 +62,25 @@ export default function SiteList({ data, currentSiteId }: Props) {
                     }`}
                   >
                     <td
-                      className={`pl-4 pr-5 py-3 text-slate-900 whitespace-nowrap font-medium border-l-4 ${
+                      className={`pl-4 pr-5 py-3 whitespace-nowrap border-l-4 ${
                         isSelected ? "border-brand-500" : "border-transparent"
                       }`}
                     >
-                      <span className="inline-flex items-center gap-2">
-                        {isSelected && (
-                          <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-brand-600 text-white whitespace-nowrap">
-                            ✓ 選択中
-                          </span>
-                        )}
-                        {site.name}
-                      </span>
+                      {isSelected ? (
+                        <span className="inline-block text-xs px-2 py-1 rounded-md bg-brand-600 text-white whitespace-nowrap">
+                          ✓ 選択中
+                        </span>
+                      ) : (
+                        <Link
+                          href={`/dashboard?site=${site.id}`}
+                          className="inline-block text-xs px-2 py-1 rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50 transition"
+                        >
+                          選択
+                        </Link>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-slate-900 whitespace-nowrap font-medium">
+                      {site.name}
                     </td>
                     <td className="px-5 py-3 text-slate-600 whitespace-nowrap">
                       {site.domain ?? <span className="text-slate-400">—</span>}
@@ -102,20 +111,6 @@ export default function SiteList({ data, currentSiteId }: Props) {
                     </td>
                     <td className="px-5 py-3 text-slate-600 whitespace-nowrap">
                       {formatDateTime(site.createdAt)}
-                    </td>
-                    <td className="px-5 py-3 text-right whitespace-nowrap">
-                      {isSelected ? (
-                        <span className="inline-block text-xs px-2 py-1 rounded-md bg-brand-600 text-white">
-                          選択中
-                        </span>
-                      ) : (
-                        <Link
-                          href={`/dashboard?site=${site.id}`}
-                          className="inline-block text-xs px-2 py-1 rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50 transition"
-                        >
-                          選択
-                        </Link>
-                      )}
                     </td>
                   </tr>
                 );
