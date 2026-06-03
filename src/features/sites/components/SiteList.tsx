@@ -59,8 +59,19 @@ export default function SiteList({ data, currentSiteId }: Props) {
                       isSelected ? "bg-brand-50/40" : "hover:bg-slate-50/60"
                     }`}
                   >
-                    <td className="px-5 py-3 text-slate-900 whitespace-nowrap font-medium">
-                      {site.name}
+                    <td
+                      className={`pl-4 pr-5 py-3 text-slate-900 whitespace-nowrap font-medium border-l-4 ${
+                        isSelected ? "border-brand-500" : "border-transparent"
+                      }`}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        {isSelected && (
+                          <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-brand-600 text-white whitespace-nowrap">
+                            ✓ 選択中
+                          </span>
+                        )}
+                        {site.name}
+                      </span>
                     </td>
                     <td className="px-5 py-3 text-slate-600 whitespace-nowrap">
                       {site.domain ?? <span className="text-slate-400">—</span>}
