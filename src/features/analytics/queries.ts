@@ -39,31 +39,62 @@ export async function getDailyTrend(
     .orderBy(asc(analyticsDaily.date));
 }
 
-// 流入元ランキング: analytics_sources_daily を source で group by して合計し、
-// normalizeSource() で正規化後に再集計 (例: t.co と twitter.com を 「X (Twitter)」 に合算)。
+// 流入元ランキング: GA4由来 (analytics_sources_daily) と
+// tracker.js 由来 (events.source / events.referrer) を統合して返す。
+//
+// マージ戦略:
+//   - normalizeSource() で正規化キーに揃える (例: t.co → x, l.instagram.com → instagram)
+//   - GA4 にデータがある source は GA4 の数値を優先 (権威データ)
+//   - GA4 に出てこない source は events から visitor_id distinct / CV count を取って補完
+//
+// これで Instagram 等が GA4 で direct/unknown 扱いされても、tracker.js が拾った
+// utm_source / referrer から SNS 流入を表示できる。
 export async function getSourceRanking(
   siteId: string,
   range?: DateRange,
 ): Promise<ReferrerRank[]> {
-  const conditions = [eq(analyticsSourcesDaily.siteId, siteId)];
+  // --- 1. GA4 由来 (analytics_sources_daily) ---
+  const ga4Conditions = [eq(analyticsSourcesDaily.siteId, siteId)];
   if (range) {
-    conditions.push(
+    ga4Conditions.push(
       between(analyticsSourcesDaily.date, range.startDate, range.endDate),
     );
   }
-  const rows = await db
+  const ga4Rows = await db
     .select({
       source: analyticsSourcesDaily.source,
       visitors: sql<number>`coalesce(sum(${analyticsSourcesDaily.visitors}), 0)`,
       conversions: sql<number>`coalesce(sum(${analyticsSourcesDaily.conversions}), 0)`,
     })
     .from(analyticsSourcesDaily)
-    .where(and(...conditions))
+    .where(and(...ga4Conditions))
     .groupBy(analyticsSourcesDaily.source);
 
-  // 正規化キーで再集計
+  // --- 2. tracker.js 由来 (events) ---
+  // source (utm_source) が無ければ referrer をフォールバックキーに。
+  // CV件数は event_definitions.is_conversion=true な events だけカウント。
+  const eventConditions = [eq(events.siteId, siteId)];
+  if (range) {
+    eventConditions.push(gte(events.occurredAt, range.start));
+    eventConditions.push(lt(events.occurredAt, range.end));
+  }
+  const sourceKeyExpr = sql<string | null>`coalesce(${events.source}, ${events.referrer})`;
+  const eventRows = await db
+    .select({
+      source: sourceKeyExpr,
+      visitors: sql<number>`count(distinct ${events.visitorId})`,
+      conversions: sql<number>`coalesce(sum(case when ${eventDefinitions.isConversion} = 1 then 1 else 0 end), 0)`,
+    })
+    .from(events)
+    .leftJoin(eventDefinitions, eq(eventDefinitions.id, events.eventDefinitionId))
+    .where(and(...eventConditions))
+    .groupBy(sourceKeyExpr);
+
+  // --- 3. 正規化キーでマージ (GA4優先) ---
   const merged = new Map<string, ReferrerRank>();
-  for (const r of rows) {
+
+  // 3-1. GA4 をまず投入
+  for (const r of ga4Rows) {
     const n = normalizeSource(r.source);
     const existing = merged.get(n.key);
     if (existing) {
@@ -78,6 +109,21 @@ export async function getSourceRanking(
         conversions: Number(r.conversions),
       });
     }
+  }
+
+  // 3-2. events 由来は GA4 で既に拾えていないキーだけ追加 (二重カウント回避)
+  for (const r of eventRows) {
+    const n = normalizeSource(r.source);
+    if (merged.has(n.key)) continue;
+    const visitors = Number(r.visitors);
+    if (visitors === 0) continue;
+    merged.set(n.key, {
+      source: r.source ?? "(direct)",
+      label: n.label,
+      icon: n.icon,
+      visitors,
+      conversions: Number(r.conversions),
+    });
   }
 
   return [...merged.values()].sort((a, b) => b.visitors - a.visitors);
