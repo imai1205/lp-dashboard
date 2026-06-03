@@ -1,6 +1,7 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, between, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { analyticsDaily, eventDefinitions, events } from "@/db/schema";
+import type { DateRange } from "@/lib/period";
 import type { Summary } from "./types";
 
 type Totals = {
@@ -34,8 +35,17 @@ function relDelta(prev: number, curr: number): number {
   return ((curr - prev) / prev) * 100;
 }
 
-export async function getDashboardSummary(siteId: string): Promise<Summary> {
+export async function getDashboardSummary(
+  siteId: string,
+  range?: DateRange,
+): Promise<Summary> {
   // 1. impressions / visitors / sessions は analytics_daily から取得 (GA4由来)
+  const dailyConditions = [eq(analyticsDaily.siteId, siteId)];
+  if (range) {
+    dailyConditions.push(
+      between(analyticsDaily.date, range.startDate, range.endDate),
+    );
+  }
   const dailyRows = await db
     .select({
       date: analyticsDaily.date,
@@ -44,11 +54,19 @@ export async function getDashboardSummary(siteId: string): Promise<Summary> {
       sessions: analyticsDaily.sessions,
     })
     .from(analyticsDaily)
-    .where(eq(analyticsDaily.siteId, siteId))
+    .where(and(...dailyConditions))
     .orderBy(asc(analyticsDaily.date));
 
   // 2. 成果数は events × event_definitions(is_conversion=true) を日付別に COUNT
   // INNER JOIN なので event_definition_id が NULL の events は除外される
+  const convConditions = [
+    eq(events.siteId, siteId),
+    eq(eventDefinitions.isConversion, true),
+  ];
+  if (range) {
+    convConditions.push(gte(events.occurredAt, range.start));
+    convConditions.push(lt(events.occurredAt, range.end));
+  }
   const conversionsByDate = await db
     .select({
       date: sql<string>`strftime('%Y-%m-%d', datetime(${events.occurredAt}, 'unixepoch'))`.as(
@@ -58,9 +76,7 @@ export async function getDashboardSummary(siteId: string): Promise<Summary> {
     })
     .from(events)
     .innerJoin(eventDefinitions, eq(events.eventDefinitionId, eventDefinitions.id))
-    .where(
-      and(eq(events.siteId, siteId), eq(eventDefinitions.isConversion, true)),
-    )
+    .where(and(...convConditions))
     .groupBy(sql`date`);
 
   const convByDate = new Map<string, number>();
@@ -81,13 +97,21 @@ export async function getDashboardSummary(siteId: string): Promise<Summary> {
   // 4. GA4 由来の impressions が 0 の場合、tracker.js の pageview イベントから推定
   //    (GA4 未設定の顧客や 24h ラグ期間でも数値が見えるようにする)
   if (totals.impressions === 0 || totals.visitors === 0) {
+    const pvConditions = [
+      eq(events.siteId, siteId),
+      eq(events.type, "pageview"),
+    ];
+    if (range) {
+      pvConditions.push(gte(events.occurredAt, range.start));
+      pvConditions.push(lt(events.occurredAt, range.end));
+    }
     const [pvFallback] = await db
       .select({
         impressions: sql<number>`count(*)`,
         visitors: sql<number>`count(distinct ${events.visitorId})`,
       })
       .from(events)
-      .where(and(eq(events.siteId, siteId), eq(events.type, "pageview")));
+      .where(and(...pvConditions));
 
     const fallbackImpressions = Number(pvFallback?.impressions ?? 0);
     const fallbackVisitors = Number(pvFallback?.visitors ?? 0);

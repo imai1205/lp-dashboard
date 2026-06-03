@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, between, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   analyticsDaily,
@@ -7,6 +7,7 @@ import {
   events,
 } from "@/db/schema";
 import { normalizeSource } from "@/lib/analytics/normalizeSource";
+import type { DateRange } from "@/lib/period";
 import type { ActionResult, ReferrerRank } from "./types";
 
 // 日別推移グラフ用のデータポイント
@@ -18,7 +19,14 @@ export type DailyTrendPoint = {
 };
 
 // analytics_daily を日付昇順で返す。recharts に直接渡せる形。
-export async function getDailyTrend(siteId: string): Promise<DailyTrendPoint[]> {
+export async function getDailyTrend(
+  siteId: string,
+  range?: DateRange,
+): Promise<DailyTrendPoint[]> {
+  const conditions = [eq(analyticsDaily.siteId, siteId)];
+  if (range) {
+    conditions.push(between(analyticsDaily.date, range.startDate, range.endDate));
+  }
   return db
     .select({
       date: analyticsDaily.date,
@@ -27,13 +35,22 @@ export async function getDailyTrend(siteId: string): Promise<DailyTrendPoint[]> 
       conversions: analyticsDaily.conversions,
     })
     .from(analyticsDaily)
-    .where(eq(analyticsDaily.siteId, siteId))
+    .where(and(...conditions))
     .orderBy(asc(analyticsDaily.date));
 }
 
 // 流入元ランキング: analytics_sources_daily を source で group by して合計し、
 // normalizeSource() で正規化後に再集計 (例: t.co と twitter.com を 「X (Twitter)」 に合算)。
-export async function getSourceRanking(siteId: string): Promise<ReferrerRank[]> {
+export async function getSourceRanking(
+  siteId: string,
+  range?: DateRange,
+): Promise<ReferrerRank[]> {
+  const conditions = [eq(analyticsSourcesDaily.siteId, siteId)];
+  if (range) {
+    conditions.push(
+      between(analyticsSourcesDaily.date, range.startDate, range.endDate),
+    );
+  }
   const rows = await db
     .select({
       source: analyticsSourcesDaily.source,
@@ -41,7 +58,7 @@ export async function getSourceRanking(siteId: string): Promise<ReferrerRank[]> 
       conversions: sql<number>`coalesce(sum(${analyticsSourcesDaily.conversions}), 0)`,
     })
     .from(analyticsSourcesDaily)
-    .where(eq(analyticsSourcesDaily.siteId, siteId))
+    .where(and(...conditions))
     .groupBy(analyticsSourcesDaily.source);
 
   // 正規化キーで再集計
@@ -75,7 +92,15 @@ export type PagePathStat = {
   visitors: number;
 };
 
-export async function getPagePathBreakdown(siteId: string): Promise<PagePathStat[]> {
+export async function getPagePathBreakdown(
+  siteId: string,
+  range?: DateRange,
+): Promise<PagePathStat[]> {
+  const conditions = [eq(events.siteId, siteId), eq(events.type, "pageview")];
+  if (range) {
+    conditions.push(gte(events.occurredAt, range.start));
+    conditions.push(lt(events.occurredAt, range.end));
+  }
   const rows = await db
     .select({
       pagePath: events.pagePath,
@@ -83,7 +108,7 @@ export async function getPagePathBreakdown(siteId: string): Promise<PagePathStat
       visitors: sql<number>`count(distinct ${events.visitorId})`,
     })
     .from(events)
-    .where(and(eq(events.siteId, siteId), eq(events.type, "pageview")))
+    .where(and(...conditions))
     .groupBy(events.pagePath)
     .orderBy(desc(sql`2`))
     .limit(20);
@@ -99,13 +124,25 @@ export async function getPagePathBreakdown(siteId: string): Promise<PagePathStat
 
 // アクション別成果: event_definitions に events を LEFT JOIN して件数 count。
 // options.conversionOnly=true なら is_conversion=true の定義だけ集計対象とする。
+// range が指定された場合は events を期間でフィルタ (定義は全部出す、イベントが範囲外なら count=0)。
 export async function getActionResults(
   siteId: string,
-  options?: { conversionOnly?: boolean },
+  options?: { conversionOnly?: boolean; range?: DateRange },
 ): Promise<ActionResult[]> {
-  const conditions = [eq(eventDefinitions.siteId, siteId)];
+  const defConditions = [eq(eventDefinitions.siteId, siteId)];
   if (options?.conversionOnly) {
-    conditions.push(eq(eventDefinitions.isConversion, true));
+    defConditions.push(eq(eventDefinitions.isConversion, true));
+  }
+
+  // events 側の期間フィルタは LEFT JOIN の ON 句に入れる必要がある
+  // (WHERE に入れると 0 件のイベントを持つ定義が落ちる)
+  const joinConditions = [
+    eq(events.eventDefinitionId, eventDefinitions.id),
+    eq(events.siteId, siteId),
+  ];
+  if (options?.range) {
+    joinConditions.push(gte(events.occurredAt, options.range.start));
+    joinConditions.push(lt(events.occurredAt, options.range.end));
   }
 
   const rows = await db
@@ -115,8 +152,8 @@ export async function getActionResults(
       count: sql<number>`count(${events.id})`,
     })
     .from(eventDefinitions)
-    .leftJoin(events, eq(events.eventDefinitionId, eventDefinitions.id))
-    .where(and(...conditions))
+    .leftJoin(events, and(...joinConditions))
+    .where(and(...defConditions))
     .groupBy(eventDefinitions.id, eventDefinitions.label, eventDefinitions.sortOrder)
     .orderBy(desc(sql`3`)); // 3列目 (count) で降順
 

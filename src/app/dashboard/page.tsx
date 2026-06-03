@@ -17,11 +17,12 @@ import {
   getPagePathBreakdown,
   getSourceRanking,
 } from "@/features/analytics";
+import { parsePeriod, resolveRange } from "@/lib/period";
 
 export const dynamic = "force-dynamic";
 
 type Props = {
-  searchParams: { site?: string };
+  searchParams: { site?: string; period?: string };
 };
 
 export default async function DashboardPage({ searchParams }: Props) {
@@ -73,13 +74,17 @@ export default async function DashboardPage({ searchParams }: Props) {
     selected = sites.find((s) => activeSet.has(s.site.id)) ?? sites[0];
   }
 
+  // 期間フィルタ (Topbar の期間セレクトから ?period=... で渡る)
+  const period = parsePeriod(searchParams.period);
+  const range = resolveRange(period);
+
   // 選択サイトの集計を並列フェッチ
   const [summary, sources, trend, actions, pageBreakdown] = await Promise.all([
-    getDashboardSummary(selected.site.id),
-    getSourceRanking(selected.site.id),
-    getDailyTrend(selected.site.id),
-    getActionResults(selected.site.id, { conversionOnly: true }),
-    getPagePathBreakdown(selected.site.id),
+    getDashboardSummary(selected.site.id, range),
+    getSourceRanking(selected.site.id, range),
+    getDailyTrend(selected.site.id, range),
+    getActionResults(selected.site.id, { conversionOnly: true, range }),
+    getPagePathBreakdown(selected.site.id, range),
   ]);
 
   return (
@@ -88,7 +93,8 @@ export default async function DashboardPage({ searchParams }: Props) {
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
           title="ダッシュボード"
-          subtitle={`${selected.organization.name} / ${selected.site.name}`}
+          subtitle={`${selected.organization.name} / ${selected.site.name} (${range.label})`}
+          showPeriodSelector
         />
         <main className="flex-1 p-4 md:p-6 space-y-6">
           {/* KPIカード (5枚: 表示回数 / 訪問者 / セッション / 成果 / CV率) */}

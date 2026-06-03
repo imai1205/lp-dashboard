@@ -10,11 +10,12 @@ import {
 } from "@/features/analytics";
 import { getSession } from "@/features/auth/queries";
 import { getMySitesWithOrg } from "@/features/sites";
+import { parsePeriod, resolveRange } from "@/lib/period";
 
 export const dynamic = "force-dynamic";
 
 type Props = {
-  searchParams: { site?: string };
+  searchParams: { site?: string; period?: string };
 };
 
 export default async function AnalyticsPage({ searchParams }: Props) {
@@ -44,10 +45,14 @@ export default async function AnalyticsPage({ searchParams }: Props) {
   const selected =
     sites.find((s) => s.site.id === searchParams.site) ?? sites[0];
 
+  // 期間フィルタ
+  const period = parsePeriod(searchParams.period);
+  const range = resolveRange(period);
+
   // 並列フェッチ
   const [trend, sources] = await Promise.all([
-    getDailyTrend(selected.site.id),
-    getSourceRanking(selected.site.id),
+    getDailyTrend(selected.site.id, range),
+    getSourceRanking(selected.site.id, range),
   ]);
 
   return (
@@ -56,7 +61,8 @@ export default async function AnalyticsPage({ searchParams }: Props) {
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
           title="アクセス解析"
-          subtitle={`${selected.organization.name} / ${selected.site.name}`}
+          subtitle={`${selected.organization.name} / ${selected.site.name} (${range.label})`}
+          showPeriodSelector
         />
         <main className="flex-1 p-4 md:p-6 space-y-6">
           {/* サイト切替 (アクセス解析は単一サイト粒度なので「全サイト」オプションは出さない) */}
