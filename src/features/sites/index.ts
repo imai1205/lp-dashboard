@@ -1,6 +1,7 @@
 export { default as SiteList } from "./components/SiteList";
 export { default as SiteAdminTable } from "./components/SiteAdminTable";
 export { default as CreateSiteForm } from "./components/CreateSiteForm";
+export { default as AdminCreateSiteForm } from "./components/AdminCreateSiteForm";
 export { default as EditSiteForm } from "./components/EditSiteForm";
 export { default as EmbedCodeBlock } from "./components/EmbedCodeBlock";
 export { default as CopyButton } from "./components/CopyButton";

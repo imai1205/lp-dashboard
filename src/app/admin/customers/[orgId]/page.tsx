@@ -4,6 +4,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 import { getSession } from "@/features/auth/queries";
 import { getCustomerDetail } from "@/features/admin/queries";
+import { AdminCreateSiteForm } from "@/features/sites";
 import {
   ROLE_BADGE_STYLE,
   ROLE_LABEL,
@@ -178,6 +179,7 @@ export default async function AdminCustomerDetailPage({ params }: Props) {
                 </table>
               </div>
             )}
+            <AdminCreateSiteForm organizationId={detail.organization.id} />
           </div>
 
           <footer className="text-center text-xs text-slate-400 py-4">
