@@ -4,7 +4,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 import { getSession } from "@/features/auth/queries";
 import { getCustomerDetail } from "@/features/admin/queries";
-import { AdminCreateSiteForm } from "@/features/sites";
+import { AdminCreateSiteForm, AdminSiteManager } from "@/features/sites";
 import {
   ROLE_BADGE_STYLE,
   ROLE_LABEL,
@@ -122,63 +122,7 @@ export default async function AdminCustomerDetailPage({ params }: Props) {
                 サイト ({detail.sites.length}件)
               </h2>
             </div>
-            {detail.sites.length === 0 ? (
-              <div className="px-5 py-8 text-center text-sm text-slate-500">
-                登録サイトがありません
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs text-slate-500 bg-slate-50">
-                      <th className="px-5 py-2 font-medium whitespace-nowrap">名前</th>
-                      <th className="px-5 py-2 font-medium whitespace-nowrap">ドメイン</th>
-                      <th className="px-5 py-2 font-medium whitespace-nowrap">GA4</th>
-                      <th className="px-5 py-2 font-medium text-center whitespace-nowrap">
-                        ステータス
-                      </th>
-                      <th className="px-5 py-2 font-medium whitespace-nowrap">登録日</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {detail.sites.map((s) => (
-                      <tr key={s.id} className="hover:bg-slate-50/60 transition">
-                        <td className="px-5 py-3 text-slate-900 whitespace-nowrap">
-                          {s.name}
-                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                            {s.id}
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 text-slate-700 whitespace-nowrap text-xs">
-                          {s.domain ?? <span className="text-slate-400">—</span>}
-                        </td>
-                        <td className="px-5 py-3 text-slate-700 whitespace-nowrap text-xs">
-                          {s.ga4PropertyId ? (
-                            <code className="font-mono">{s.ga4PropertyId}</code>
-                          ) : (
-                            <span className="text-slate-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3 text-center whitespace-nowrap">
-                          {s.isActive ? (
-                            <span className="inline-block text-xs px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
-                              有効
-                            </span>
-                          ) : (
-                            <span className="inline-block text-xs px-2 py-0.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200">
-                              無効
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3 text-slate-600 whitespace-nowrap text-xs">
-                          {formatDateTime(s.createdAt)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <AdminSiteManager sites={detail.sites} />
             <AdminCreateSiteForm organizationId={detail.organization.id} />
           </div>
 

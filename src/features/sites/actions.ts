@@ -138,6 +138,77 @@ export async function adminCreateSite(formData: FormData): Promise<void> {
   redirect(`/admin/customers/${organizationId}?saved=1`);
 }
 
+// --- ヘルパ: siteId から組織を解決し、管理者として操作可能か確認 ----------
+// 戻り値は { site, organizationId }。adminUpdateSite / adminDeleteSite 用。
+async function assertCanManageSite(
+  userId: string,
+  email: string | null | undefined,
+  siteId: string,
+) {
+  const [row] = await db
+    .select({ site: sites })
+    .from(sites)
+    .where(eq(sites.id, siteId))
+    .limit(1);
+  if (!row) throw new Error("対象のサイトが見つかりません");
+
+  await assertCanManageOrgSites(userId, email, row.site.organizationId);
+  return row.site;
+}
+
+// --- admin update (管理パネルから顧客サイトを編集) -----------------------
+// SaaS提供者 または 対象組織の owner が、name/domain/GA4/有効無効を更新できる。
+export async function adminUpdateSite(formData: FormData): Promise<void> {
+  const session = await requireSession();
+
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) throw new Error("id is required");
+
+  const site = await assertCanManageSite(session.user.id, session.user.email, id);
+
+  const name = formData.get("name");
+  const domain = formData.get("domain");
+  const ga4PropertyId = formData.get("ga4PropertyId");
+  const isActive = formData.get("isActive"); // checkbox: "on" or null
+
+  if (typeof name !== "string" || !name.trim()) {
+    throw new Error("LP名を入力してください");
+  }
+
+  await db
+    .update(sites)
+    .set({
+      name: name.trim(),
+      domain: typeof domain === "string" && domain.trim() ? domain.trim() : null,
+      ga4PropertyId:
+        typeof ga4PropertyId === "string" && ga4PropertyId.trim()
+          ? ga4PropertyId.trim()
+          : null,
+      isActive: isActive === "on",
+    })
+    .where(eq(sites.id, id));
+
+  revalidatePath(`/admin/customers/${site.organizationId}`);
+  revalidatePath("/admin/customers");
+  redirect(`/admin/customers/${site.organizationId}?saved=1`);
+}
+
+// --- admin delete (管理パネルから顧客サイトを削除) -----------------------
+export async function adminDeleteSite(formData: FormData): Promise<void> {
+  const session = await requireSession();
+
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) throw new Error("id is required");
+
+  const site = await assertCanManageSite(session.user.id, session.user.email, id);
+
+  await db.delete(sites).where(eq(sites.id, id));
+
+  revalidatePath(`/admin/customers/${site.organizationId}`);
+  revalidatePath("/admin/customers");
+  redirect(`/admin/customers/${site.organizationId}?deleted=1`);
+}
+
 // --- update ---------------------------------------------------------------
 export async function updateSite(formData: FormData): Promise<void> {
   const session = await requireSession();
