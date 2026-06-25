@@ -166,3 +166,22 @@ export async function getMySitesWithOrg(userId: string): Promise<SiteWithOrg[]> 
 
   return rows;
 }
+
+// 管理者(SaaS提供者)が任意の顧客組織のサイトを取得する。membership非依存。
+// 呼び出し側で必ず isSystemAdmin を検証すること (/admin/* 配下からのみ使用)。
+// role は表示に使わない前提のためダミーで "owner" を入れる。
+export async function getOrgSitesWithOrg(
+  organizationId: string,
+): Promise<SiteWithOrg[]> {
+  const rows = await db
+    .select({
+      site: sites,
+      organization: { id: organizations.id, name: organizations.name },
+    })
+    .from(sites)
+    .innerJoin(organizations, eq(organizations.id, sites.organizationId))
+    .where(eq(sites.organizationId, organizationId))
+    .orderBy(asc(sites.createdAt));
+
+  return rows.map((r) => ({ ...r, role: "owner" as const }));
+}

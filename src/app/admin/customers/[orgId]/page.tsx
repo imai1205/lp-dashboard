@@ -5,6 +5,7 @@ import Topbar from "@/components/layout/Topbar";
 import { getSession } from "@/features/auth/queries";
 import { getCustomerDetail } from "@/features/admin/queries";
 import { AdminCreateSiteForm, AdminSiteManager } from "@/features/sites";
+import SavedBanner from "@/components/ui/SavedBanner";
 import {
   ROLE_BADGE_STYLE,
   ROLE_LABEL,
@@ -40,8 +41,18 @@ export default async function AdminCustomerDetailPage({ params }: Props) {
             ← 顧客一覧に戻る
           </Link>
 
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
-            🛡 SaaS提供者向け閲覧画面 — 顧客側からは見えません
+          <SavedBanner />
+
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+              🛡 SaaS提供者向け閲覧画面 — 顧客側からは見えません
+            </div>
+            <Link
+              href={`/admin/customers/${detail.organization.id}/dashboard`}
+              className="inline-block text-sm bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg transition"
+            >
+              📊 この顧客のダッシュボードを見る →
+            </Link>
           </div>
 
           {/* 組織情報 */}
