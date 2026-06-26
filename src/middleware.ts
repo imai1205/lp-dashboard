@@ -11,10 +11,12 @@ import { getSessionCookie } from "better-auth/cookies";
 export function middleware(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
   const { pathname } = request.nextUrl;
-  const isLoginPage = pathname === "/login";
+  // 公開ページ: ログイン画面と、トップページ（サービス紹介。OAuth審査の要件で
+  // 未ログインでもアプリの目的が見られる必要がある）。
+  const isPublicPage = pathname === "/login" || pathname === "/";
 
   // Cookie 無しで保護ページにアクセス → /login へ
-  if (!sessionCookie && !isLoginPage) {
+  if (!sessionCookie && !isPublicPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
