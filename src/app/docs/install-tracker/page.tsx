@@ -6,7 +6,7 @@ export const dynamic = "force-static";
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ??
   process.env.BETTER_AUTH_URL ??
-  "https://lp-dashboard-eight.vercel.app";
+  "https://lp-dashboard.maxelustech.com";
 
 const SCRIPT_TAG = `<script src="${APP_URL}/tracker.js" data-site-id="YOUR_SITE_ID"></script>`;
 

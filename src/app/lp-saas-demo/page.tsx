@@ -14,7 +14,7 @@ import DemoCTAs from "./DemoCTAs";
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ??
   process.env.BETTER_AUTH_URL ??
-  "https://lp-dashboard-eight.vercel.app";
+  "https://lp-dashboard.maxelustech.com";
 
 // SSR時に searchParams を読みたいので dynamic
 export const dynamic = "force-dynamic";

@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ??
   process.env.BETTER_AUTH_URL ??
-  "https://lp-dashboard-eight.vercel.app";
+  "https://lp-dashboard.maxelustech.com";
 
 // ステータスバッジ (色: 緑=正常 / 黄=未設定 / 赤=エラー / 灰=情報)
 function StatusBadge({

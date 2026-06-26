@@ -14,7 +14,7 @@ function appOrigin(): string {
   return (
     process.env.NEXT_PUBLIC_APP_URL ??
     process.env.BETTER_AUTH_URL ??
-    "https://lp-dashboard-eight.vercel.app"
+    "https://lp-dashboard.maxelustech.com"
   );
 }
 

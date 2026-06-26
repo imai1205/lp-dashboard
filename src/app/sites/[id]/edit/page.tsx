@@ -38,7 +38,7 @@ export default async function EditSitePage({ params }: Props) {
     process.env.NEXT_PUBLIC_APP_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ??
     process.env.BETTER_AUTH_URL ??
-    "https://lp-dashboard-eight.vercel.app";
+    "https://lp-dashboard.maxelustech.com";
 
   return (
     <div className="min-h-screen flex bg-slate-50">

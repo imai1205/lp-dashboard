@@ -3,7 +3,7 @@
  * ----------------------------------------------------------------
  * 外部LPに以下1行を貼るだけで導入:
  *
- *   <script src="https://lp-dashboard-eight.vercel.app/tracker.js"
+ *   <script src="https://lp-dashboard.maxelustech.com/tracker.js"
  *           data-site-id="xxx"></script>
  *
  * 自動で実行:
