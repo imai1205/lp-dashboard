@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/features/auth/queries";
 import LoginButton from "./LoginButton";
@@ -26,7 +27,15 @@ export default async function LoginPage() {
         </div>
         <LoginButton />
         <p className="mt-6 text-xs text-slate-400 text-center">
-          ログインすることで利用規約とプライバシーポリシーに同意したものとみなされます
+          ログインすることで
+          <Link href="/terms" className="text-brand-600 hover:underline">
+            利用規約
+          </Link>
+          と
+          <Link href="/privacy" className="text-brand-600 hover:underline">
+            プライバシーポリシー
+          </Link>
+          に同意したものとみなされます
         </p>
       </div>
     </div>
