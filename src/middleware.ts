@@ -24,13 +24,15 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// API ルート / 静的ファイル / 画像 / tracker.js / docs / lp-saas-demo / invite は除外。
-// - tracker.js   : 外部LPの匿名訪問者から読み込まれるので公開必須
-// - docs/*       : 導入ガイドなので未ログインの開発者でも見られるよう公開
-// - lp-saas-demo : 公開デモLP。SNSからの匿名訪問者が UTM 付きで来る想定
-// - invite/*     : 招待リンクは未ログイン状態でも開けて、画面内でログイン誘導する
+// API ルート / 静的ファイル / 画像 / tracker.js / docs / lp-saas-demo / invite /
+// privacy / terms は除外。
+// - tracker.js      : 外部LPの匿名訪問者から読み込まれるので公開必須
+// - docs/*          : 導入ガイドなので未ログインの開発者でも見られるよう公開
+// - lp-saas-demo    : 公開デモLP。SNSからの匿名訪問者が UTM 付きで来る想定
+// - invite/*        : 招待リンクは未ログイン状態でも開けて、画面内でログイン誘導する
+// - privacy / terms : プライバシーポリシー・利用規約。OAuth審査の要件上ログイン不要で公開必須
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|tracker\\.js|docs|lp-saas-demo|invite).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|tracker\\.js|docs|lp-saas-demo|invite|privacy|terms).*)",
   ],
 };
