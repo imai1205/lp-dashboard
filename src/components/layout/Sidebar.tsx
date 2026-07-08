@@ -21,8 +21,9 @@ export default function Sidebar({ user }: Props) {
       {/* モバイル用ドロワー (md未満で表示) */}
       <MobileMenu user={user} isAdmin={isAdmin} />
 
-      {/* デスクトップ用サイドバー (md以上で表示) */}
-      <aside className="hidden md:flex md:flex-col w-60 shrink-0 border-r border-slate-200 bg-white">
+      {/* デスクトップ用サイドバー (md以上で表示)。
+          sticky + h-screen でスクロールしても画面左に固定する。 */}
+      <aside className="hidden md:flex md:flex-col w-60 shrink-0 border-r border-slate-200 bg-white md:sticky md:top-0 md:h-screen">
       <div className="h-16 flex items-center px-6 border-b border-slate-200">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-bold">

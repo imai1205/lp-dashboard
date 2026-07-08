@@ -32,7 +32,7 @@ export default function SidebarNav({ isAdmin }: Props) {
   const nav = isAdmin ? [...baseNav, ...adminNav] : baseNav;
 
   return (
-    <nav className="flex-1 px-3 py-4 space-y-1">
+    <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1">
       {nav.map((item) => {
         const active = isActive(pathname, item.href);
         const className = `w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
