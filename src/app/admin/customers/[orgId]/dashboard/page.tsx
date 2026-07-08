@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 import { getSession } from "@/features/auth/queries";
-import { getOrgSitesWithOrg } from "@/features/sites";
+import { getOrgSitesWithOrg, SyncGA4Button } from "@/features/sites";
 import { KpiCard, getDashboardSummary } from "@/features/dashboard";
 import {
   ActionResultsTable,
@@ -121,6 +121,27 @@ export default async function AdminCustomerDashboardPage({
               })}
             </div>
           )}
+
+          {/* GA4 同期 (管理者として実行) */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  GA4 同期 — {selected.site.name}
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {selected.site.ga4PropertyId
+                    ? `プロパティID: ${selected.site.ga4PropertyId}。あなた(管理者)のGoogleアカウントがこのGA4プロパティの閲覧権限を持っている必要があります。`
+                    : "このサイトには GA4 プロパティID が未設定です。顧客詳細のサイト編集で設定してください。"}
+                </p>
+              </div>
+              <SyncGA4Button
+                admin
+                siteId={selected.site.id}
+                disabled={!selected.site.ga4PropertyId}
+              />
+            </div>
+          </div>
 
           {/* KPIカード */}
           <section className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">

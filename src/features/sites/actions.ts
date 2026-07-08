@@ -297,3 +297,31 @@ export async function syncSiteAnalyticsAction(
     rangeEnd: result.range.end,
   };
 }
+
+// --- admin GA4 sync (管理パネルから顧客サイトを同期) --------------------
+// syncSiteAnalyticsAction と違い assertCanManageSite (system admin または
+// 対象組織の owner) で認可する。GA4 API 呼び出しはログイン中ユーザー
+// (= 実行した管理者) 自身の OAuth トークンで行うため、その管理者が対象
+// GA4 プロパティの閲覧権限を持っている必要がある。
+export async function adminSyncSiteAnalyticsAction(
+  formData: FormData,
+): Promise<SyncActionResult> {
+  const session = await requireSession();
+
+  const siteId = formData.get("siteId");
+  if (typeof siteId !== "string" || !siteId) throw new Error("siteId is required");
+
+  const site = await assertCanManageSite(session.user.id, session.user.email, siteId);
+
+  const result = await syncSiteAnalytics(session.user.id, siteId);
+
+  revalidatePath(`/admin/customers/${site.organizationId}/dashboard`);
+  revalidatePath(`/admin/customers/${site.organizationId}`);
+
+  return {
+    dailyUpserted: result.dailyUpserted,
+    sourcesUpserted: result.sourcesUpserted,
+    rangeStart: result.range.start,
+    rangeEnd: result.range.end,
+  };
+}

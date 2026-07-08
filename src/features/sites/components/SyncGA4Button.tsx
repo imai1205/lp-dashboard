@@ -1,16 +1,22 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { syncSiteAnalyticsAction } from "../actions";
+import {
+  adminSyncSiteAnalyticsAction,
+  syncSiteAnalyticsAction,
+} from "../actions";
 
 type Props = {
   siteId: string;
   disabled?: boolean;
+  // true の場合は管理パネル用アクション (assertCanManageSite 認可) を呼ぶ。
+  // 顧客本人用 (/sites/[id]/edit) では省略 = メンバー認可の通常アクション。
+  admin?: boolean;
 };
 
 // GA4 連携ボタン。Server Action を呼ぶだけ。
 // useTransition で連打防止 + pending 表示。
-export default function SyncGA4Button({ siteId, disabled }: Props) {
+export default function SyncGA4Button({ siteId, disabled, admin }: Props) {
   const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
   const [message, setMessage] = useState<string>("");
@@ -22,7 +28,9 @@ export default function SyncGA4Button({ siteId, disabled }: Props) {
       try {
         const fd = new FormData();
         fd.set("siteId", siteId);
-        const result = await syncSiteAnalyticsAction(fd);
+        const result = admin
+          ? await adminSyncSiteAnalyticsAction(fd)
+          : await syncSiteAnalyticsAction(fd);
         setStatus("ok");
         if (result.dailyUpserted === 0 && result.sourcesUpserted === 0) {
           setMessage(
