@@ -21,9 +21,15 @@ export default function Sidebar({ user }: Props) {
       {/* モバイル用ドロワー (md未満で表示) */}
       <MobileMenu user={user} isAdmin={isAdmin} />
 
+      {/* デスクトップ用: 固定サイドバー分の幅をフレックス内で確保するスペーサー。
+          aside を position:fixed にすると本文が左に潜り込むため、同じ幅の
+          プレースホルダをフローに置いて本文を右にずらす。 */}
+      <div className="hidden md:block w-60 shrink-0" aria-hidden="true" />
+
       {/* デスクトップ用サイドバー (md以上で表示)。
-          sticky + h-screen でスクロールしても画面左に固定する。 */}
-      <aside className="hidden md:flex md:flex-col w-60 shrink-0 border-r border-slate-200 bg-white md:sticky md:top-0 md:h-screen">
+          fixed + h-screen で本文をスクロールしても画面左に完全固定。
+          最下部のアカウント欄も常に表示される (nav 部分だけが内部スクロール)。 */}
+      <aside className="hidden md:flex md:flex-col w-60 md:fixed md:left-0 md:top-0 md:h-screen z-30 border-r border-slate-200 bg-white">
       <div className="h-16 flex items-center px-6 border-b border-slate-200">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-bold">
