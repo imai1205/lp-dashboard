@@ -84,13 +84,24 @@ export async function getDashboardSummary(
     convByDate.set(r.date, Number(r.count));
   }
 
-  // 3. analytics_daily の日付に events ベース成果数を当てはめる
-  const rows = dailyRows.map((r) => ({
-    impressions: r.impressions,
-    visitors: r.visitors,
-    sessions: r.sessions,
-    conversions: convByDate.get(r.date) ?? 0,
-  }));
+  // 3. GA4日付 (analytics_daily) と 成果発生日 (events) の和集合で行を組み立てる。
+  //    dailyRows だけを基準にすると、GA4未同期サイト (analytics_daily 空) では
+  //    成果イベントがあっても行が0件になり成果数が常に0になってしまう。
+  //    和集合にすることで tracker.js のみのサイトでも成果が集計される。
+  const dailyByDate = new Map(dailyRows.map((r) => [r.date, r]));
+  const allDates = new Set<string>([
+    ...dailyByDate.keys(),
+    ...convByDate.keys(),
+  ]);
+  const rows = [...allDates].sort().map((date) => {
+    const r = dailyByDate.get(date);
+    return {
+      impressions: r?.impressions ?? 0,
+      visitors: r?.visitors ?? 0,
+      sessions: r?.sessions ?? 0,
+      conversions: convByDate.get(date) ?? 0,
+    };
+  });
 
   let totals = sumOf(rows);
 

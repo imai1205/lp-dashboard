@@ -18,25 +18,82 @@ export type DailyTrendPoint = {
   conversions: number;
 };
 
-// analytics_daily を日付昇順で返す。recharts に直接渡せる形。
+// 日別推移を日付昇順で返す。recharts に直接渡せる形。
+//
+// GA4由来 (analytics_daily) と tracker.js由来 (events) を日付でマージする:
+//   - impressions / visitors は GA4 を優先し、GA4に無い日 (未同期) は
+//     events の pageview から補完する。
+//   - conversions は常に events (is_conversion=true) から集計する
+//     (KPIカード getDashboardSummary と一致させるため。analytics_daily.conversions
+//      は使わない)。
+// これにより GA4を設定していない tracker.js のみのサイトでもグラフが描ける。
 export async function getDailyTrend(
   siteId: string,
   range?: DateRange,
 ): Promise<DailyTrendPoint[]> {
-  const conditions = [eq(analyticsDaily.siteId, siteId)];
+  // --- GA4 由来 (impressions / visitors) ---
+  const ga4Conditions = [eq(analyticsDaily.siteId, siteId)];
   if (range) {
-    conditions.push(between(analyticsDaily.date, range.startDate, range.endDate));
+    ga4Conditions.push(
+      between(analyticsDaily.date, range.startDate, range.endDate),
+    );
   }
-  return db
+  const ga4Rows = await db
     .select({
       date: analyticsDaily.date,
       impressions: analyticsDaily.impressions,
       visitors: analyticsDaily.visitors,
-      conversions: analyticsDaily.conversions,
     })
     .from(analyticsDaily)
-    .where(and(...conditions))
-    .orderBy(asc(analyticsDaily.date));
+    .where(and(...ga4Conditions));
+
+  // --- tracker.js 由来 (events) を日付別に集計 ---
+  const evConditions = [eq(events.siteId, siteId)];
+  if (range) {
+    evConditions.push(gte(events.occurredAt, range.start));
+    evConditions.push(lt(events.occurredAt, range.end));
+  }
+  const dateExpr = sql<string>`strftime('%Y-%m-%d', datetime(${events.occurredAt}, 'unixepoch'))`;
+  const evRows = await db
+    .select({
+      date: dateExpr.as("date"),
+      pageviews: sql<number>`sum(case when ${events.type} = 'pageview' then 1 else 0 end)`,
+      visitors: sql<number>`count(distinct case when ${events.type} = 'pageview' then ${events.visitorId} end)`,
+      conversions: sql<number>`coalesce(sum(case when ${eventDefinitions.isConversion} = 1 then 1 else 0 end), 0)`,
+    })
+    .from(events)
+    .leftJoin(eventDefinitions, eq(eventDefinitions.id, events.eventDefinitionId))
+    .where(and(...evConditions))
+    .groupBy(sql`date`);
+
+  // --- 日付でマージ ---
+  const byDate = new Map<string, DailyTrendPoint>();
+  for (const r of ga4Rows) {
+    byDate.set(r.date, {
+      date: r.date,
+      impressions: r.impressions,
+      visitors: r.visitors,
+      conversions: 0,
+    });
+  }
+  for (const r of evRows) {
+    const existing = byDate.get(r.date);
+    if (existing) {
+      // impressions / visitors は GA4優先、GA4が0の日だけ events で補完
+      if (existing.impressions === 0) existing.impressions = Number(r.pageviews);
+      if (existing.visitors === 0) existing.visitors = Number(r.visitors);
+      existing.conversions = Number(r.conversions);
+    } else {
+      byDate.set(r.date, {
+        date: r.date,
+        impressions: Number(r.pageviews),
+        visitors: Number(r.visitors),
+        conversions: Number(r.conversions),
+      });
+    }
+  }
+
+  return [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
 }
 
 // 流入元ランキング: GA4由来 (analytics_sources_daily) と
