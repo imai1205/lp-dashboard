@@ -1,7 +1,7 @@
 import { and, asc, between, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { analyticsDaily, eventDefinitions, events } from "@/db/schema";
-import type { DateRange } from "@/lib/period";
+import { type DateRange, previousRange } from "@/lib/period";
 import type { Summary } from "./types";
 
 type Totals = {
@@ -35,10 +35,13 @@ function relDelta(prev: number, curr: number): number {
   return ((curr - prev) / prev) * 100;
 }
 
-export async function getDashboardSummary(
+// 指定期間の impressions / visitors / sessions / conversions を集計する。
+// GA4 (analytics_daily) を基準にしつつ、未同期サイトは tracker.js の
+// pageview イベントで impressions / visitors を補完する。
+async function computeTotals(
   siteId: string,
   range?: DateRange,
-): Promise<Summary> {
+): Promise<Totals> {
   // 1. impressions / visitors / sessions は analytics_daily から取得 (GA4由来)
   const dailyConditions = [eq(analyticsDaily.siteId, siteId)];
   if (range) {
@@ -136,25 +139,36 @@ export async function getDashboardSummary(
     // sessions は GA4 由来のみ。tracker側にsessionId未実装のため、
     // GA4未同期サイトでは sessions=0 となる (KPIカードで明示)
   }
-  const cvr = totals.visitors === 0 ? 0 : (totals.conversions / totals.visitors) * 100;
+  return totals;
+}
 
-  // 前後半比較 (前月比の暫定: 真の前月集計に置換予定)
-  const half = Math.floor(rows.length / 2);
-  const previous = sumOf(rows.slice(0, half));
-  const current = sumOf(rows.slice(-half));
-  const prevCvr = previous.visitors === 0 ? 0 : (previous.conversions / previous.visitors) * 100;
-  const currCvr = current.visitors === 0 ? 0 : (current.conversions / current.visitors) * 100;
+const cvrOf = (t: Totals): number =>
+  t.visitors === 0 ? 0 : (t.conversions / t.visitors) * 100;
+
+export async function getDashboardSummary(
+  siteId: string,
+  range?: DateRange,
+): Promise<Summary> {
+  // 現在期間と、その直前の同じ長さの期間を集計して前月比 (前期間比) を算出する。
+  // range 未指定 (全期間) の場合は比較対象がないので delta は 0 とする。
+  const [current, previous] = await Promise.all([
+    computeTotals(siteId, range),
+    range ? computeTotals(siteId, previousRange(range)) : Promise.resolve(null),
+  ]);
+
+  const delta = (pick: (t: Totals) => number): number =>
+    previous ? relDelta(pick(previous), pick(current)) : 0;
 
   return {
-    impressions: totals.impressions,
-    visitors: totals.visitors,
-    sessions: totals.sessions,
-    conversions: totals.conversions,
-    cvr,
-    impressionsDelta: relDelta(previous.impressions, current.impressions),
-    visitorsDelta: relDelta(previous.visitors, current.visitors),
-    sessionsDelta: relDelta(previous.sessions, current.sessions),
-    conversionsDelta: relDelta(previous.conversions, current.conversions),
-    cvrDelta: relDelta(prevCvr, currCvr),
+    impressions: current.impressions,
+    visitors: current.visitors,
+    sessions: current.sessions,
+    conversions: current.conversions,
+    cvr: cvrOf(current),
+    impressionsDelta: delta((t) => t.impressions),
+    visitorsDelta: delta((t) => t.visitors),
+    sessionsDelta: delta((t) => t.sessions),
+    conversionsDelta: delta((t) => t.conversions),
+    cvrDelta: previous ? relDelta(cvrOf(previous), cvrOf(current)) : 0,
   };
 }

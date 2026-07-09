@@ -47,6 +47,28 @@ export type DateRange = {
   label: string;
 };
 
+// 前月比 (前期間比) 用に、現在の range の直前に位置する
+// 同じ長さの期間を返す。[start, end) の長さ分だけ手前にずらす。
+//   例) 今月1〜9日 (9日間) → 直前の9日間 (先月22〜30日)
+//       先月まるごと     → 先々月まるごと相当
+// これにより front-loaded なアクセスでも符号が正しく出る。
+export function previousRange(range: DateRange): DateRange {
+  const durationMs = range.end.getTime() - range.start.getTime();
+  const prevEnd = new Date(range.start);
+  const prevStart = new Date(range.start.getTime() - durationMs);
+
+  const endDateExclusive = new Date(prevEnd);
+  endDateExclusive.setDate(endDateExclusive.getDate() - 1);
+
+  return {
+    startDate: fmt(prevStart),
+    endDate: fmt(endDateExclusive),
+    start: prevStart,
+    end: prevEnd,
+    label: `${range.label} (前期間)`,
+  };
+}
+
 // 月曜日を週の起点とする (JST想定)。
 function startOfWeek(d: Date): Date {
   const day = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
