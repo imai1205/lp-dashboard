@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 // 制定日。改定時はここを更新する。
-const LAST_UPDATED = "2026年6月26日";
+const LAST_UPDATED = "2026年7月13日";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -115,7 +115,45 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-slate-900">6. Cookie 等の利用</h2>
+            <h2 className="text-base font-semibold text-slate-900">
+              6. データの保護（セキュリティ対策）
+            </h2>
+            <p className="mt-2">
+              当社は、取得した情報（Google アナリティクス（GA4）データや Google
+              アカウント情報等のセンシティブなデータを含みます）を、不正アクセス・
+              紛失・破壊・改ざん・漏えいから保護するため、以下の技術的・組織的な
+              安全管理措置を講じます。
+            </p>
+            <ul className="mt-2 list-disc pl-5 space-y-1">
+              <li>
+                <strong>通信の暗号化</strong>：利用者のブラウザおよび Google API
+                との間のすべての通信を TLS（HTTPS）により暗号化します。
+              </li>
+              <li>
+                <strong>保管時の暗号化</strong>：取得した情報は、暗号化された
+                データベース・ストレージに保管します。
+              </li>
+              <li>
+                <strong>アクセス制御</strong>：情報へのアクセスは、業務上必要な
+                当社の担当者に限定し、認証および権限管理（最小権限の原則）により
+                制御します。Google OAuth のアクセストークン等の認証情報は、
+                安全に保管し、必要な範囲でのみ使用します。
+              </li>
+              <li>
+                <strong>人によるアクセスの制限</strong>：Google ユーザーデータへの
+                人による閲覧は、本ポリシー第3項（Limited Use）に定める場合を除き
+                行いません。
+              </li>
+              <li>
+                <strong>継続的な管理</strong>：アクセス権の定期的な見直し、
+                ソフトウェアの更新・脆弱性対応、ログの記録等を通じて、
+                安全管理措置を継続的に維持・改善します。
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-base font-semibold text-slate-900">7. Cookie 等の利用</h2>
             <p className="mt-2">
               本サービスは、ログインセッションの維持のために Cookie
               を使用します。計測タグは、匿名の訪問者識別のために訪問者のブラウザに
@@ -124,7 +162,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-slate-900">7. 本ポリシーの変更</h2>
+            <h2 className="text-base font-semibold text-slate-900">8. 本ポリシーの変更</h2>
             <p className="mt-2">
               当社は、必要に応じて本ポリシーを変更することがあります。重要な変更がある
               場合は、本サービス上で告知します。
@@ -132,7 +170,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-slate-900">8. お問い合わせ窓口</h2>
+            <h2 className="text-base font-semibold text-slate-900">9. お問い合わせ窓口</h2>
             <p className="mt-2">
               本ポリシーおよび個人情報の取扱いに関するお問い合わせは、以下までご連絡ください。
             </p>
